@@ -1,7 +1,7 @@
-package com.abrar.shopify.controller;
+package com.abrar.shopsphere.controller;
 
-import com.abrar.shopify.entity.Product;
-import com.abrar.shopify.service.ProductService;
+import com.abrar.shopsphere.entity.Product;
+import com.abrar.shopsphere.service.ProductService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;

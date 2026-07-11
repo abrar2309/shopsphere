@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>Shopify</artifactId>
+    <artifactId>shopsphere</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Shopify</name>
-    <description>Shopify</description>
+    <description>shopsphere</description>
     <url/>
     <licenses>
         <license/>

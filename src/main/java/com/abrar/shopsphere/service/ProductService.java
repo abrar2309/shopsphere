@@ -1,6 +1,6 @@
-package com.abrar.shopify.service;
+package com.abrar.shopsphere.service;
 
-import com.abrar.shopify.entity.Product;
+import com.abrar.shopsphere.entity.Product;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

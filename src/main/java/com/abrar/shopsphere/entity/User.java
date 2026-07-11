@@ -1,25 +1,23 @@
-package com.abrar.shopify.entity;
+package com.abrar.shopsphere.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Product {
+public class User {
 
     private Long id;
 
     private String name;
 
-    private String description;
+    private String email;
 
-    private BigDecimal price;
+    private String phone;
 
-    private Integer stock;
+    private String password;
 }

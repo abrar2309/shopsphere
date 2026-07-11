@@ -1,7 +1,7 @@
-package com.abrar.shopify.controller;
+package com.abrar.shopsphere.controller;
 
-import com.abrar.shopify.entity.User;
-import com.abrar.shopify.service.UserService;
+import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.service.UserService;
 
 import org.springframework.web.bind.annotation.*;
 

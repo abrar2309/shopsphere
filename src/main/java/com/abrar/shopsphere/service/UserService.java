@@ -1,6 +1,6 @@
-package com.abrar.shopify.service;
+package com.abrar.shopsphere.service;
 
-import com.abrar.shopify.entity.User;
+import com.abrar.shopsphere.entity.User;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
