@@ -80,3 +80,6 @@ shopsphere-ui/*.zip
 
 tools/classpath.txt
 tools/**/*.class
+
+# Local AWS SSM tunnel parameters
+/ssm-parameters.json
