@@ -1,0 +1,31 @@
+﻿
+services:
+  backend:
+    image: shopsphere-backend:local
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      DB_URL: jdbc:postgresql://host.docker.internal:5433/shopsphere
+      DB_USERNAME: "${DB_USERNAME:?Set DB_USERNAME in this PowerShell session}"
+      DB_PASSWORD: "${DB_PASSWORD:?Set DB_PASSWORD in this PowerShell session}"
+
+      SPRING_DATA_REDIS_HOST: host.docker.internal
+      SPRING_DATA_REDIS_PORT: "6379"
+
+      APP_KAFKA_ENABLED: "true"
+      APP_KAFKA_BOOTSTRAP_SERVERS: "shopsphere-kafka:9092"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "shopsphere-kafka:9092"
+      SPRING_KAFKA_PRODUCER_KEY_SERIALIZER: "org.apache.kafka.common.serialization.StringSerializer"
+      SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER: "org.springframework.kafka.support.serializer.JsonSerializer"
+
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: INFO
+      LOGGING_LEVEL_COM_ABRAR_SHOPSPHERE: INFO
+    restart: unless-stopped
+
+  frontend:
+    image: shopsphere-frontend:local
+    ports:
+      - "127.0.0.1:8082:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

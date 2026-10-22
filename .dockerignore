@@ -1,0 +1,14 @@
+.git
+.idea
+.vscode
+
+target/
+shopsphere-ui/node_modules/
+shopsphere-ui/dist/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.class

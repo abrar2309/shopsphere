@@ -1,96 +1,98 @@
 package com.abrar.shopsphere.service;
 
+import com.abrar.shopsphere.dto.UserRequestDTO;
+import com.abrar.shopsphere.dto.UserResponseDTO;
 import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.exception.UserNotFoundException;
+import com.abrar.shopsphere.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class UserService {
 
-    private final List<User> users = new ArrayList<>();
+    private final UserRepository userRepository;
 
-    public UserService() {
-
-        users.add(new User(
-                1L,
-                "Abrar",
-                "abrar@gmail.com",
-                "9876543210",
-                "password123"));
-
-        users.add(new User(
-                2L,
-                "John",
-                "john@gmail.com",
-                "9876500000",
-                "john123"));
-
-        users.add(new User(
-                3L,
-                "Sara",
-                "sara@gmail.com",
-                "9876511111",
-                "sara123"));
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public List<User> getAllUsers() {
-        return users;
-    }
+    // Create User
+    public UserResponseDTO addUser(UserRequestDTO dto) {
 
-    public User getUserById(Long id) {
-
-        for (User user : users) {
-
-            if (user.getId().equals(id)) {
-                return user;
-            }
-
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Email already exists.");
         }
 
-        return null;
+        User user = new User();
+
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPhoneNumber(dto.getPhoneNumber());
+
+        User savedUser = userRepository.save(user);
+
+        return mapToResponse(savedUser);
     }
 
-    public User addUser(User user) {
+    // Get All Users
+    public List<UserResponseDTO> getAllUsers() {
 
-        users.add(user);
-
-        return user;
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
-    public User updateUser(Long id, User updatedUser) {
+    // Get User By Id
+    public UserResponseDTO getUserById(Long id) {
 
-        for (User user : users) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
 
-            if (user.getId().equals(id)) {
-
-                user.setName(updatedUser.getName());
-                user.setEmail(updatedUser.getEmail());
-                user.setPhone(updatedUser.getPhone());
-                user.setPassword(updatedUser.getPassword());
-
-                return user;
-            }
-
-        }
-
-        return null;
+        return mapToResponse(user);
     }
 
-    public User deleteUser(Long id) {
+    // Update User
+    public UserResponseDTO updateUser(Long id,
+                                      UserRequestDTO dto) {
 
-        for (User user : users) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
 
-            if (user.getId().equals(id)) {
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPhoneNumber(dto.getPhoneNumber());
 
-                users.remove(user);
+        User updatedUser = userRepository.save(user);
 
-                return user;
-            }
+        return mapToResponse(updatedUser);
+    }
 
-        }
+    // Delete User
+    public void deleteUser(Long id) {
 
-        return null;
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
+
+        userRepository.delete(user);
+    }
+
+    // Convert Entity to DTO
+    private UserResponseDTO mapToResponse(User user) {
+
+        return new UserResponseDTO(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getPhoneNumber()
+        );
     }
 }

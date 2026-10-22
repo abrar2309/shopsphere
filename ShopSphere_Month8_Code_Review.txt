@@ -1,0 +1,4286 @@
+SHopsphere MONTH 8 CODE REVIEW
+Backend root: C:\Users\hppav\Downloads\Shopify
+Generated: 10/19/2026 22:34:51
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\config\SecurityConfig.java ==========
+
+package com.abrar.shopsphere.config;
+
+import com.abrar.shopsphere.security.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    /*
+     * CORS configuration for the local React frontend.
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:5175",
+                "http://localhost:5176",
+                "http://localhost:5177",
+                "http://localhost:5178",
+                "http://localhost:8082"
+
+
+        ));
+
+        configuration.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+        ));
+
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept"
+        ));
+
+        configuration.setExposedHeaders(List.of(
+                "X-RateLimit-Limit",
+                "X-RateLimit-Remaining"
+        ));
+
+        // The frontend uses bearer-token authentication, not cookies.
+        configuration.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
+        http
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
+                )
+
+                // Stateless REST APIs use JWT authentication.
+                .csrf(csrf -> csrf.disable())
+
+                .authorizeHttpRequests(auth -> auth
+
+                        // Allow Spring Security to process error dispatches.
+                        .dispatcherTypeMatchers(
+                                DispatcherType.ERROR
+                        ).permitAll()
+
+                        // Public health endpoints.
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/health/**"
+                        ).permitAll()
+
+                        // Public registration and login.
+                        .requestMatchers(
+                                "/auth/**"
+                        ).permitAll()
+
+                        // Public Swagger documentation.
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
+                        // Admin-only endpoints.
+                        .requestMatchers(
+                                "/admin/**"
+                        ).hasRole("ADMIN")
+
+                        // Product creation: sellers and admins.
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/products",
+                                "/products/**"
+                        ).hasAnyRole("SELLER", "ADMIN")
+
+                        // Product updates: sellers and admins.
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/products",
+                                "/products/**"
+                        ).hasAnyRole("SELLER", "ADMIN")
+
+                        // Product deletion: sellers and admins.
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/products",
+                                "/products/**"
+                        ).hasAnyRole("SELLER", "ADMIN")
+
+                        // Public product browsing.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/products",
+                                "/products/**"
+                        ).permitAll()
+
+                        // Public category browsing.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/categories",
+                                "/categories/**"
+                        ).permitAll()
+
+                        // Category creation: admins only.
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/categories",
+                                "/categories/**"
+                        ).hasRole("ADMIN")
+
+                        // Category updates: admins only.
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/categories",
+                                "/categories/**"
+                        ).hasRole("ADMIN")
+
+                        // Category partial updates: admins only.
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/categories",
+                                "/categories/**"
+                        ).hasRole("ADMIN")
+
+                        // Category deletion: admins only.
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/categories",
+                                "/categories/**"
+                        ).hasRole("ADMIN")
+
+                        // All other requests require authentication.
+                        .anyRequest().authenticated()
+                )
+
+                // Preserve JWT authentication.
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
+
+        return http.build();
+    }
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\controller\AuthController.java ==========
+package com.abrar.shopsphere.controller;
+
+import com.abrar.shopsphere.dto.LoginRequestDTO;
+import com.abrar.shopsphere.dto.LoginResponseDTO;
+import com.abrar.shopsphere.dto.LoginResult;
+import com.abrar.shopsphere.dto.UserRequestDTO;
+import com.abrar.shopsphere.dto.UserResponseDTO;
+import com.abrar.shopsphere.service.AuthService;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(
+            AuthService authService) {
+
+        this.authService = authService;
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<UserResponseDTO> register(
+            @RequestBody UserRequestDTO dto) {
+
+        UserResponseDTO response =
+                authService.register(dto);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(
+            @RequestBody LoginRequestDTO dto) {
+
+        LoginResult result =
+                authService.login(dto);
+
+        HttpHeaders headers =
+                new HttpHeaders();
+
+        headers.set(
+                "X-RateLimit-Limit",
+                String.valueOf(
+                        result
+                                .getRateLimitResult()
+                                .getLimit()
+                )
+        );
+
+        headers.set(
+                "X-RateLimit-Remaining",
+                String.valueOf(
+                        result
+                                .getRateLimitResult()
+                                .getRemaining()
+                )
+        );
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .body(
+                        result.getLoginResponse()
+                );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\controller\CartController.java ==========
+package com.abrar.shopsphere.controller;
+
+import com.abrar.shopsphere.dto.AddCartItemRequestDTO;
+import com.abrar.shopsphere.dto.CartResponseDTO;
+import com.abrar.shopsphere.dto.UpdateCartItemRequestDTO;
+import com.abrar.shopsphere.service.CartService;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/cart")
+public class CartController {
+
+    private final CartService cartService;
+
+    public CartController(
+            CartService cartService) {
+
+        this.cartService = cartService;
+    }
+
+    @GetMapping
+    public ResponseEntity<CartResponseDTO> getCart() {
+
+        return ResponseEntity.ok(
+                cartService.getCart()
+        );
+    }
+
+    @PostMapping("/items")
+    public ResponseEntity<CartResponseDTO> addItem(
+            @Valid
+            @RequestBody
+            AddCartItemRequestDTO request) {
+
+        return ResponseEntity.ok(
+                cartService.addItem(request)
+        );
+    }
+
+    @PutMapping("/items/{productId}")
+    public ResponseEntity<CartResponseDTO> updateItem(
+            @PathVariable Long productId,
+            @Valid
+            @RequestBody
+            UpdateCartItemRequestDTO request) {
+
+        return ResponseEntity.ok(
+                cartService.updateItem(
+                        productId,
+                        request
+                )
+        );
+    }
+
+    @DeleteMapping("/items/{productId}")
+    public ResponseEntity<CartResponseDTO> removeItem(
+            @PathVariable Long productId) {
+
+        return ResponseEntity.ok(
+                cartService.removeItem(productId)
+        );
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> clearCart() {
+
+        cartService.clearCart();
+
+        return ResponseEntity.noContent()
+                .build();
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\controller\OrderController.java ==========
+
+        package com.abrar.shopsphere.controller;
+
+import com.abrar.shopsphere.dto.OrderRequestDTO;
+import com.abrar.shopsphere.dto.OrderResponseDTO;
+import com.abrar.shopsphere.service.OrderService;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/orders")
+@SecurityRequirement(name = "bearerAuth")
+public class OrderController {
+
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    // Preferred endpoint: user identity comes from authentication.
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderResponseDTO createMyOrder(
+            @Valid @RequestBody OrderRequestDTO requestDTO) {
+
+        return orderService.createOrderForAuthenticatedUser(
+                requestDTO
+        );
+    }
+
+    // Returns orders belonging to the authenticated user.
+    @GetMapping
+    public List<OrderResponseDTO> getMyOrders() {
+        return orderService.getMyOrders();
+    }
+
+    // Backward-compatible endpoint with server-side ownership checks.
+    @PostMapping("/{userId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderResponseDTO createOrder(
+            @PathVariable Long userId,
+            @Valid @RequestBody OrderRequestDTO requestDTO) {
+
+        return orderService.createOrder(userId, requestDTO);
+    }
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\controller\ProductController.java ==========
+package com.abrar.shopsphere.controller;
+
+import com.abrar.shopsphere.dto.ProductRequestDTO;
+import com.abrar.shopsphere.dto.ProductResponseDTO;
+import com.abrar.shopsphere.service.ProductService;
+
+import jakarta.validation.Valid;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/products")
+@SecurityRequirement(name = "bearerAuth")
+public class ProductController {
+
+    private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
+
+    // ============================================================
+    // CREATE PRODUCT
+    // ============================================================
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProductResponseDTO addProduct(
+            @Valid
+            @RequestBody ProductRequestDTO requestDTO) {
+
+        return productService.addProduct(requestDTO);
+    }
+
+    // ============================================================
+    // GET ALL PRODUCTS
+    // ============================================================
+
+    @GetMapping
+    public Page<ProductResponseDTO> getAllProducts(
+
+            @RequestParam(defaultValue = "0")
+            int page,
+
+            @RequestParam(defaultValue = "10")
+            int size,
+
+            @RequestParam(defaultValue = "id")
+            String sortBy) {
+
+        return productService.getAllProducts(
+                page,
+                size,
+                sortBy
+        );
+    }
+
+    // ============================================================
+    // GET PRODUCT BY ID
+    // ============================================================
+
+    @GetMapping("/{id}")
+    public ProductResponseDTO getProductById(
+            @PathVariable Long id) {
+
+        return productService.getProductById(id);
+    }
+
+    // ============================================================
+    // UPDATE PRODUCT
+    // ============================================================
+
+    @PutMapping("/{id}")
+    public ProductResponseDTO updateProduct(
+
+            @PathVariable Long id,
+
+            @Valid
+            @RequestBody ProductRequestDTO requestDTO) {
+
+        return productService.updateProduct(
+                id,
+                requestDTO
+        );
+    }
+
+    // ============================================================
+    // DELETE PRODUCT
+    // ============================================================
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProduct(
+            @PathVariable Long id) {
+
+        productService.deleteProduct(id);
+    }
+
+    // ============================================================
+    // SEARCH PRODUCTS
+    // ============================================================
+
+    @GetMapping("/search")
+    public List<ProductResponseDTO> searchProducts(
+
+            @RequestParam String name) {
+
+        return productService.searchProducts(name);
+    }
+
+    // ============================================================
+    // FILTER PRODUCTS BY PRICE
+    // ============================================================
+
+    @GetMapping("/price")
+    public List<ProductResponseDTO> getProductsByPriceRange(
+
+            @RequestParam Double minPrice,
+
+            @RequestParam Double maxPrice) {
+
+        return productService.getProductsByPriceRange(
+                minPrice,
+                maxPrice
+        );
+    }
+
+    // ============================================================
+    // FILTER PRODUCTS BY CATEGORY
+    // ============================================================
+
+    @GetMapping("/category")
+    public List<ProductResponseDTO> getProductsByCategory(
+
+            @RequestParam String categoryName) {
+
+        return productService.getProductsByCategory(
+                categoryName
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\AddCartItemRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+public class AddCartItemRequestDTO {
+
+    @NotNull(message = "Product ID is required")
+    private Long productId;
+
+    @NotNull(message = "Quantity is required")
+    @Positive(message = "Quantity must be greater than zero")
+    private Integer quantity;
+
+    public AddCartItemRequestDTO() {
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\CartItemResponseDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import java.math.BigDecimal;
+
+public class CartItemResponseDTO {
+
+    private Long productId;
+    private String productName;
+    private BigDecimal price;
+    private Integer quantity;
+    private BigDecimal subtotal;
+
+    public CartItemResponseDTO() {
+    }
+
+    public CartItemResponseDTO(
+            Long productId,
+            String productName,
+            BigDecimal price,
+            Integer quantity,
+            BigDecimal subtotal) {
+
+        this.productId = productId;
+        this.productName = productName;
+        this.price = price;
+        this.quantity = quantity;
+        this.subtotal = subtotal;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public String getProductName() {
+        return productName;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\CartResponseDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public class CartResponseDTO {
+
+    private Long cartId;
+    private List<CartItemResponseDTO> items;
+    private BigDecimal totalAmount;
+
+    public CartResponseDTO() {
+    }
+
+    public CartResponseDTO(
+            Long cartId,
+            List<CartItemResponseDTO> items,
+            BigDecimal totalAmount) {
+
+        this.cartId = cartId;
+        this.items = items;
+        this.totalAmount = totalAmount;
+    }
+
+    public Long getCartId() {
+        return cartId;
+    }
+
+    public List<CartItemResponseDTO> getItems() {
+        return items;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\LoginRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public class LoginRequestDTO {
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Please enter a valid email")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    public LoginRequestDTO() {
+    }
+
+    public LoginRequestDTO(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\OrderItemRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
+public class OrderItemRequestDTO {
+
+    @NotNull(message = "Product ID is required")
+    private Long productId;
+
+    @NotNull(message = "Quantity is required")
+    @Min(value = 1, message = "Quantity must be at least 1")
+    private Integer quantity;
+
+    public OrderItemRequestDTO() {
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\OrderItemResponseDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+public class OrderItemResponseDTO {
+
+    private Long productId;
+
+    private Integer quantity;
+
+    private Double price;
+
+    public OrderItemResponseDTO(
+            Long productId,
+            Integer quantity,
+            Double price) {
+
+        this.productId = productId;
+        this.quantity = quantity;
+        this.price = price;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\OrderRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+
+import java.util.List;
+
+public class OrderRequestDTO {
+
+    @NotEmpty(message = "Order must contain at least one item")
+    @Valid
+    private List<OrderItemRequestDTO> items;
+
+    public OrderRequestDTO() {
+    }
+
+    public List<OrderItemRequestDTO> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItemRequestDTO> items) {
+        this.items = items;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\OrderResponseDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import java.util.List;
+
+public class OrderResponseDTO {
+
+    private Long orderId;
+
+    private Double totalAmount;
+
+    private String status;
+
+    private List<OrderItemResponseDTO> items;
+
+    public OrderResponseDTO(
+            Long orderId,
+            Double totalAmount,
+            String status,
+            List<OrderItemResponseDTO> items) {
+
+        this.orderId = orderId;
+        this.totalAmount = totalAmount;
+        this.status = status;
+        this.items = items;
+    }
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public List<OrderItemResponseDTO> getItems() {
+        return items;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\UpdateCartItemRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+public class UpdateCartItemRequestDTO {
+
+    @NotNull(message = "Quantity is required")
+    @Positive(message = "Quantity must be greater than zero")
+    private Integer quantity;
+
+    public UpdateCartItemRequestDTO() {
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\dto\UserRequestDTO.java ==========
+package com.abrar.shopsphere.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class UserRequestDTO {
+
+    @NotBlank(message = "First name is required")
+    @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
+    private String lastName;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Please enter a valid email")
+    private String email;
+
+    @NotBlank(message = "Phone number is required")
+    @Size(min = 10, max = 15, message = "Phone number must be between 10 and 15 characters")
+    private String phoneNumber;
+
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+    private String password;
+
+    public UserRequestDTO() {
+    }
+
+    public UserRequestDTO(String firstName,
+                          String lastName,
+                          String email,
+                          String phoneNumber,
+                          String password) {
+
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.password = password;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\Cart.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(
+        name = "carts",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_cart_user",
+                        columnNames = "user_id"
+                )
+        }
+)
+public class Cart {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "user_id",
+            nullable = false
+    )
+    private User user;
+
+    @OneToMany(
+            mappedBy = "cart",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<CartItem> items =
+            new ArrayList<>();
+
+    public Cart() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public List<CartItem> getItems() {
+        return items;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public void setItems(List<CartItem> items) {
+        this.items = items;
+    }
+
+    public void addItem(CartItem item) {
+        items.add(item);
+        item.setCart(this);
+    }
+
+    public void removeItem(CartItem item) {
+        items.remove(item);
+        item.setCart(null);
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\CartItem.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(
+        name = "cart_items",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_cart_product",
+                        columnNames = {
+                                "cart_id",
+                                "product_id"
+                        }
+                )
+        }
+)
+public class CartItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "cart_id",
+            nullable = false
+    )
+    private Cart cart;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "product_id",
+            nullable = false
+    )
+    private Product product;
+
+    @Column(nullable = false)
+    private Integer quantity;
+
+    public CartItem() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Cart getCart() {
+        return cart;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setCart(Cart cart) {
+        this.cart = cart;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\Order.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    private Double totalAmount;
+
+    private String status;
+
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<OrderItem> items = new ArrayList<>();
+
+    public Order() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
+    }
+
+    public void addItem(OrderItem item) {
+        items.add(item);
+        item.setOrder(this);
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\OrderItem.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "order_items")
+public class OrderItem {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+
+    private Integer quantity;
+
+    private Double price;
+
+    public OrderItem() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Order getOrder() {
+        return order;
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\Product.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.PositiveOrZero;
+
+@Entity
+@Table(
+        name = "products",
+        indexes = {
+                @Index(
+                        name = "idx_product_name",
+                        columnList = "name"
+                ),
+                @Index(
+                        name = "idx_product_category",
+                        columnList = "category_id"
+                ),
+                @Index(
+                        name = "idx_product_price",
+                        columnList = "price"
+                ),
+                @Index(
+                        name = "idx_product_seller",
+                        columnList = "seller_id"
+                )
+        }
+)
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+
+    @NotBlank(
+            message = "Product name cannot be blank"
+    )
+    @Size(
+            min = 3,
+            max = 100,
+            message = "Product name must be between 3 and 100 characters"
+    )
+    private String name;
+
+
+    @NotBlank(
+            message = "Product description cannot be blank"
+    )
+    @Size(
+            min = 10,
+            max = 500,
+            message = "Description must be between 10 and 500 characters"
+    )
+    private String description;
+
+
+    @Positive(
+            message = "Price must be greater than 0"
+    )
+    private Double price;
+
+
+    // ============================================================
+    // INVENTORY
+    // ============================================================
+
+    @PositiveOrZero(message = "Stock cannot be negative")
+    private Integer stock;
+
+    // ============================================================
+    // OPTIMISTIC LOCKING
+    // ============================================================
+
+    @Version
+    private Long version;
+
+
+    // ============================================================
+    // CATEGORY
+    // ============================================================
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+
+    // ============================================================
+    // SELLER
+    // ============================================================
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id")
+    private User seller;
+
+
+    // ============================================================
+    // DEFAULT CONSTRUCTOR
+    // ============================================================
+
+    public Product() {
+    }
+
+
+    // ============================================================
+    // PARAMETERIZED CONSTRUCTOR
+    // ============================================================
+
+    public Product(
+            Long id,
+            String name,
+            String description,
+            Double price,
+            Integer stock,
+            Category category) {
+
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.stock = stock;
+        this.category = category;
+    }
+
+
+    // ============================================================
+    // GETTERS AND SETTERS
+    // ============================================================
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+
+    public Integer getStock() {
+        return stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
+
+    // ============================================================
+    // SELLER GETTER / SETTER
+    // ============================================================
+
+    public User getSeller() {
+        return seller;
+    }
+
+    public void setSeller(User seller) {
+        this.seller = seller;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\entity\User.java ==========
+package com.abrar.shopsphere.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String firstName;
+
+    private String lastName;
+
+    private String email;
+
+    private String phoneNumber;
+
+    private String password;
+
+    private String role;
+
+
+    // ============================================================
+    // DEFAULT CONSTRUCTOR
+    // ============================================================
+
+    public User() {
+    }
+
+
+    // ============================================================
+    // PARAMETERIZED CONSTRUCTOR
+    // ============================================================
+
+    public User(
+            Long id,
+            String firstName,
+            String lastName,
+            String email,
+            String phoneNumber,
+            String password,
+            String role) {
+
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.password = password;
+        this.role = role;
+    }
+
+
+    // ============================================================
+    // GETTERS
+    // ============================================================
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+
+    // ============================================================
+    // SETTERS
+    // ============================================================
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\event\OrderCreatedEvent.java ==========
+package com.abrar.shopsphere.event;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+public class OrderCreatedEvent {
+
+    private UUID eventId;
+
+    private String correlationId;
+
+    private Long orderId;
+
+    private Long customerId;
+
+    private Double totalAmount;
+
+    private String status;
+
+    private LocalDateTime occurredAt;
+
+    private List<OrderItemEvent> items;
+
+
+    public OrderCreatedEvent() {
+    }
+
+
+    public OrderCreatedEvent(
+            UUID eventId,
+            String correlationId,
+            Long orderId,
+            Long customerId,
+            Double totalAmount,
+            String status,
+            LocalDateTime occurredAt,
+            List<OrderItemEvent> items) {
+
+        this.eventId = eventId;
+
+        this.correlationId =
+                correlationId;
+
+        this.orderId =
+                orderId;
+
+        this.customerId =
+                customerId;
+
+        this.totalAmount =
+                totalAmount;
+
+        this.status =
+                status;
+
+        this.occurredAt =
+                occurredAt;
+
+        this.items =
+                items;
+    }
+
+
+    public UUID getEventId() {
+        return eventId;
+    }
+
+
+    public void setEventId(
+            UUID eventId) {
+
+        this.eventId =
+                eventId;
+    }
+
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+
+    public void setCorrelationId(
+            String correlationId) {
+
+        this.correlationId =
+                correlationId;
+    }
+
+
+    public Long getOrderId() {
+        return orderId;
+    }
+
+
+    public void setOrderId(
+            Long orderId) {
+
+        this.orderId =
+                orderId;
+    }
+
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+
+    public void setCustomerId(
+            Long customerId) {
+
+        this.customerId =
+                customerId;
+    }
+
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+
+    public void setTotalAmount(
+            Double totalAmount) {
+
+        this.totalAmount =
+                totalAmount;
+    }
+
+
+    public String getStatus() {
+        return status;
+    }
+
+
+    public void setStatus(
+            String status) {
+
+        this.status =
+                status;
+    }
+
+
+    public LocalDateTime getOccurredAt() {
+        return occurredAt;
+    }
+
+
+    public void setOccurredAt(
+            LocalDateTime occurredAt) {
+
+        this.occurredAt =
+                occurredAt;
+    }
+
+
+    public List<OrderItemEvent> getItems() {
+        return items;
+    }
+
+
+    public void setItems(
+            List<OrderItemEvent> items) {
+
+        this.items =
+                items;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\event\OrderItemEvent.java ==========
+package com.abrar.shopsphere.event;
+
+public class OrderItemEvent {
+
+    private Long productId;
+
+    private Integer quantity;
+
+    private Double price;
+
+
+    public OrderItemEvent() {
+    }
+
+
+    public OrderItemEvent(
+            Long productId,
+            Integer quantity,
+            Double price) {
+
+        this.productId = productId;
+        this.quantity = quantity;
+        this.price = price;
+    }
+
+
+    public Long getProductId() {
+        return productId;
+    }
+
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+
+    public Double getPrice() {
+        return price;
+    }
+
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\exception\CartResourceNotFoundException.java ==========
+package com.abrar.shopsphere.exception;
+
+public class CartResourceNotFoundException extends RuntimeException {
+
+    public CartResourceNotFoundException(String message) {
+        super(message);
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\exception\GlobalExceptionHandler.java ==========
+
+        package com.abrar.shopsphere.exception;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleProductNotFound(
+            ProductNotFoundException ex) {
+
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(CategoryNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCategoryNotFound(
+            CategoryNotFoundException ex) {
+
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(CartResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCartResourceNotFound(
+            CartResourceNotFoundException ex) {
+
+        return buildError(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(
+            RateLimitExceededException ex) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.TOO_MANY_REQUESTS.value());
+        body.put("error", "Too Many Requests");
+        body.put("message", ex.getMessage());
+
+        HttpHeaders headers = new HttpHeaders();
+
+        headers.set("X-RateLimit-Limit",
+                String.valueOf(ex.getLimit()));
+
+        headers.set("X-RateLimit-Remaining",
+                String.valueOf(ex.getRemaining()));
+
+        headers.set("Retry-After",
+                String.valueOf(ex.getRetryAfterSeconds()));
+
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .headers(headers)
+                .body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(
+            MethodArgumentNotValidException ex) {
+
+        Map<String, String> validationErrors =
+                ex.getBindingResult()
+                        .getFieldErrors()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                error -> error.getField(),
+                                error -> error.getDefaultMessage() != null
+                                        ? error.getDefaultMessage()
+                                        : "Invalid value",
+                                (first, second) -> first,
+                                LinkedHashMap::new
+                        ));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", "Request validation failed");
+        body.put("validationErrors", validationErrors);
+
+        return ResponseEntity
+                .badRequest()
+                .body(body);
+    }
+
+    // Invalid credentials should not be treated as a server failure.
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(
+            BadCredentialsException ex) {
+
+        return buildError(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid username or password"
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleUnexpectedException(
+            Exception ex) {
+
+        log.error("Unexpected exception while processing request", ex);
+
+        return buildError(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred"
+        );
+    }
+
+    private ResponseEntity<Map<String, Object>> buildError(
+            HttpStatus status,
+            String message) {
+
+        Map<String, Object> body = new HashMap<>();
+
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", status.value());
+        body.put("error", status.getReasonPhrase());
+        body.put("message", message);
+
+        return ResponseEntity
+                .status(status)
+                .body(body);
+    }
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\repository\CartItemRepository.java ==========
+package com.abrar.shopsphere.repository;
+
+import com.abrar.shopsphere.entity.CartItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface CartItemRepository
+        extends JpaRepository<CartItem, Long> {
+
+    Optional<CartItem> findByCartIdAndProductId(
+            Long cartId,
+            Long productId
+    );
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\repository\CartRepository.java ==========
+package com.abrar.shopsphere.repository;
+
+import com.abrar.shopsphere.entity.Cart;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface CartRepository extends JpaRepository<Cart, Long> {
+
+    Optional<Cart> findByUserId(Long userId);
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\repository\OrderItemRepository.java ==========
+package com.abrar.shopsphere.repository;
+
+import com.abrar.shopsphere.entity.OrderItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\repository\OrderRepository.java ==========
+
+        package com.abrar.shopsphere.repository;
+
+import com.abrar.shopsphere.entity.Order;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface OrderRepository
+        extends JpaRepository<Order, Long> {
+
+    @Query("""
+        SELECT DISTINCT o
+        FROM Order o
+        LEFT JOIN FETCH o.items i
+        LEFT JOIN FETCH i.product
+        WHERE o.user.id = :userId
+        ORDER BY o.id DESC
+        """)
+    List<Order> findOrdersWithItemsByUserId(
+            @Param("userId") Long userId
+    );
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\repository\ProductRepository.java ==========
+package com.abrar.shopsphere.repository;
+
+import com.abrar.shopsphere.entity.Product;
+
+import jakarta.persistence.LockModeType;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface ProductRepository
+        extends JpaRepository<Product, Long> {
+
+    // ============================================================
+    // EXISTING PRODUCT METHODS
+    // ============================================================
+
+    boolean existsByName(String name);
+
+    List<Product> findByNameContainingIgnoreCase(
+            String name
+    );
+
+    List<Product> findByPriceBetween(
+            Double minPrice,
+            Double maxPrice
+    );
+
+    List<Product> findByCategoryName(
+            String categoryName
+    );
+
+
+    // ============================================================
+    // MONTH 7 â€” CONCURRENCY
+    // PESSIMISTIC WRITE LOCK
+    // ============================================================
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM Product p
+            WHERE p.id = :productId
+            """)
+    Optional<Product> findByIdForUpdate(
+            @Param("productId") Long productId
+    );
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\security\JwtAuthenticationFilter.java ==========
+package com.abrar.shopsphere.security;
+
+import com.abrar.shopsphere.service.CustomUserDetailsService;
+import com.abrar.shopsphere.service.JwtService;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+public class JwtAuthenticationFilter
+        extends OncePerRequestFilter {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(
+                    JwtAuthenticationFilter.class
+            );
+
+    private final JwtService jwtService;
+
+    private final CustomUserDetailsService userDetailsService;
+
+
+    // ============================================================
+    // CONSTRUCTOR
+    // ============================================================
+
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            CustomUserDetailsService userDetailsService) {
+
+        this.jwtService = jwtService;
+
+        this.userDetailsService =
+                userDetailsService;
+    }
+
+
+    // ============================================================
+    // ENDPOINTS THAT DON'T REQUIRE JWT FILTER
+    // ============================================================
+
+    @Override
+    protected boolean shouldNotFilter(
+            HttpServletRequest request) {
+
+        String path =
+                request.getServletPath();
+
+        return path.equals("/auth/login")
+                || path.equals("/auth/register");
+    }
+
+
+    // ============================================================
+    // JWT FILTER
+    // ============================================================
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain)
+            throws ServletException, IOException {
+
+
+        // --------------------------------------------------------
+        // 1. GET AUTHORIZATION HEADER
+        // --------------------------------------------------------
+
+        final String authHeader =
+                request.getHeader("Authorization");
+
+
+        String username = null;
+
+        String jwt = null;
+
+
+        // --------------------------------------------------------
+        // 2. CHECK FOR BEARER TOKEN
+        // --------------------------------------------------------
+
+        if (authHeader != null
+                && authHeader.startsWith("Bearer ")) {
+
+            /*
+             * Remove:
+             *
+             * Bearer
+             *
+             * and the following space.
+             *
+             * What remains is the actual JWT.
+             */
+
+            jwt = authHeader.substring(7);
+
+
+            try {
+
+                // ------------------------------------------------
+                // 3. EXTRACT EMAIL FROM JWT
+                // ------------------------------------------------
+
+                username =
+                        jwtService.extractUsername(jwt);
+
+                logger.debug(
+                        "JWT username extracted: {}",
+                        username
+                );
+
+            } catch (Exception e) {
+
+                /*
+                 * IMPORTANT:
+                 *
+                 * Previously we silently ignored this exception.
+                 *
+                 * Now we log it so we can actually diagnose
+                 * invalid/expired/malformed JWTs.
+                 */
+
+                logger.error(
+                        "JWT extraction failed",
+                        e
+                );
+
+                username = null;
+            }
+        }
+
+
+        // --------------------------------------------------------
+        // 4. AUTHENTICATE USER
+        // --------------------------------------------------------
+
+        if (username != null
+                && SecurityContextHolder
+                .getContext()
+                .getAuthentication() == null) {
+
+            try {
+
+                // ------------------------------------------------
+                // 5. LOAD USER FROM DATABASE
+                // ------------------------------------------------
+
+                UserDetails userDetails =
+                        userDetailsService
+                                .loadUserByUsername(username);
+
+
+                // ------------------------------------------------
+                // 6. VALIDATE JWT
+                // ------------------------------------------------
+
+                if (jwtService.isTokenValid(
+                        jwt,
+                        userDetails.getUsername())) {
+
+                    logger.info(
+                            "JWT validated successfully for {}",
+                            username
+                    );
+
+
+                    // --------------------------------------------
+                    // 7. CREATE AUTHENTICATION OBJECT
+                    // --------------------------------------------
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+
+
+                    // --------------------------------------------
+                    // 8. ADD REQUEST DETAILS
+                    // --------------------------------------------
+
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource()
+                                    .buildDetails(request)
+                    );
+
+
+                    // --------------------------------------------
+                    // 9. STORE AUTHENTICATION
+                    // --------------------------------------------
+
+                    SecurityContextHolder
+                            .getContext()
+                            .setAuthentication(
+                                    authentication
+                            );
+
+
+                    logger.info(
+                            "Authentication stored in SecurityContext for {} with authorities {}",
+                            username,
+                            userDetails.getAuthorities()
+                    );
+
+                } else {
+
+                    logger.warn(
+                            "JWT validation failed for {}",
+                            username
+                    );
+                }
+
+            } catch (Exception e) {
+
+                /*
+                 * This catches problems such as:
+                 *
+                 * - User not found
+                 * - Database lookup problem
+                 * - Unexpected authentication error
+                 */
+
+                logger.error(
+                        "Failed to authenticate JWT user: {}",
+                        username,
+                        e
+                );
+            }
+        }
+
+
+        // --------------------------------------------------------
+        // 10. CONTINUE FILTER CHAIN
+        // --------------------------------------------------------
+
+        filterChain.doFilter(
+                request,
+                response
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\CartService.java ==========
+
+package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.dto.AddCartItemRequestDTO;
+import com.abrar.shopsphere.dto.CartItemResponseDTO;
+import com.abrar.shopsphere.dto.CartResponseDTO;
+import com.abrar.shopsphere.dto.UpdateCartItemRequestDTO;
+import com.abrar.shopsphere.entity.Cart;
+import com.abrar.shopsphere.entity.CartItem;
+import com.abrar.shopsphere.entity.Product;
+import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.exception.CartResourceNotFoundException;
+import com.abrar.shopsphere.repository.CartItemRepository;
+import com.abrar.shopsphere.repository.CartRepository;
+import com.abrar.shopsphere.repository.ProductRepository;
+import com.abrar.shopsphere.repository.UserRepository;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+@Service
+public class CartService {
+
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+
+    public CartService(
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            ProductRepository productRepository,
+            UserRepository userRepository) {
+
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.productRepository = productRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Transactional
+    public CartResponseDTO getCart() {
+
+        User user = getCurrentUser();
+
+        Cart cart = cartRepository
+                .findByUserId(user.getId())
+                .orElseGet(() -> createCart(user));
+
+        return mapToResponse(cart);
+    }
+
+    @Transactional
+    public CartResponseDTO addItem(
+            AddCartItemRequestDTO request) {
+
+        User user = getCurrentUser();
+
+        Cart cart = cartRepository
+                .findByUserId(user.getId())
+                .orElseGet(() -> createCart(user));
+
+        Product product = productRepository
+                .findById(request.getProductId())
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Product not found"
+                        ));
+
+        CartItem cartItem = cartItemRepository
+                .findByCartIdAndProductId(
+                        cart.getId(),
+                        product.getId()
+                )
+                .orElse(null);
+
+        if (cartItem == null) {
+
+            cartItem = new CartItem();
+            cartItem.setCart(cart);
+            cartItem.setProduct(product);
+            cartItem.setQuantity(request.getQuantity());
+
+            cart.addItem(cartItem);
+
+        } else {
+
+            cartItem.setQuantity(
+                    cartItem.getQuantity()
+                            + request.getQuantity()
+            );
+        }
+
+        cartItemRepository.save(cartItem);
+
+        return mapToResponse(cart);
+    }
+
+    @Transactional
+    public CartResponseDTO updateItem(
+            Long productId,
+            UpdateCartItemRequestDTO request) {
+
+        User user = getCurrentUser();
+
+        Cart cart = cartRepository
+                .findByUserId(user.getId())
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Cart not found"
+                        ));
+
+        CartItem cartItem = cartItemRepository
+                .findByCartIdAndProductId(
+                        cart.getId(),
+                        productId
+                )
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Product not found in cart"
+                        ));
+
+        cartItem.setQuantity(request.getQuantity());
+
+        cartItemRepository.save(cartItem);
+
+        return mapToResponse(cart);
+    }
+
+    @Transactional
+    public CartResponseDTO removeItem(Long productId) {
+
+        User user = getCurrentUser();
+
+        Cart cart = cartRepository
+                .findByUserId(user.getId())
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Cart not found"
+                        ));
+
+        CartItem cartItem = cartItemRepository
+                .findByCartIdAndProductId(
+                        cart.getId(),
+                        productId
+                )
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Product not found in cart"
+                        ));
+
+        cart.removeItem(cartItem);
+        cartItemRepository.delete(cartItem);
+
+        return mapToResponse(cart);
+    }
+
+    @Transactional
+    public void clearCart() {
+
+        User user = getCurrentUser();
+
+        Cart cart = cartRepository
+                .findByUserId(user.getId())
+                .orElseThrow(() ->
+                        new CartResourceNotFoundException(
+                                "Cart not found"
+                        ));
+
+        cart.getItems().clear();
+
+        cartRepository.save(cart);
+    }
+
+    private Cart createCart(User user) {
+
+        Cart cart = new Cart();
+        cart.setUser(user);
+
+        return cartRepository.save(cart);
+    }
+
+    private User getCurrentUser() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "User is not authenticated"
+            );
+        }
+
+        String email = authentication.getName();
+
+        return userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated user not found"
+                        ));
+    }
+
+    private CartResponseDTO mapToResponse(Cart cart) {
+
+        List<CartItemResponseDTO> items = cart.getItems()
+                .stream()
+                .map(this::mapItem)
+                .toList();
+
+        BigDecimal totalAmount = items.stream()
+                .map(CartItemResponseDTO::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new CartResponseDTO(
+                cart.getId(),
+                items,
+                totalAmount
+        );
+    }
+
+    private CartItemResponseDTO mapItem(CartItem item) {
+
+        BigDecimal price = BigDecimal.valueOf(
+                item.getProduct().getPrice()
+        );
+
+        BigDecimal subtotal = price.multiply(
+                BigDecimal.valueOf(item.getQuantity())
+        );
+
+        return new CartItemResponseDTO(
+                item.getProduct().getId(),
+                item.getProduct().getName(),
+                price,
+                item.getQuantity(),
+                subtotal
+        );
+    }
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\CustomUserDetailsService.java ==========
+package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.repository.UserRepository;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Locale;
+
+@Service
+public class CustomUserDetailsService
+        implements UserDetailsService {
+
+
+    private final UserRepository userRepository;
+
+
+    // ============================================================
+    // CONSTRUCTOR
+    // ============================================================
+
+    public CustomUserDetailsService(
+            UserRepository userRepository) {
+
+        this.userRepository = userRepository;
+    }
+
+
+    // ============================================================
+    // LOAD USER
+    // ============================================================
+
+    @Override
+    public UserDetails loadUserByUsername(
+            String email)
+            throws UsernameNotFoundException {
+
+
+        // --------------------------------------------------------
+        // 1. FIND USER
+        // --------------------------------------------------------
+
+        User user =
+                userRepository.findByEmail(email)
+                        .orElseThrow(() ->
+                                new UsernameNotFoundException(
+                                        "User not found with email: "
+                                                + email
+                                )
+                        );
+
+
+        // --------------------------------------------------------
+        // 2. CONVERT ROLE TO SPRING SECURITY AUTHORITY
+        // --------------------------------------------------------
+
+        String authority =
+                "ROLE_"
+                        + user.getRole()
+                        .toUpperCase(Locale.ROOT);
+
+
+        // --------------------------------------------------------
+        // 3. CREATE SPRING SECURITY USER
+        // --------------------------------------------------------
+
+        return new org.springframework.security.core.userdetails.User(
+                user.getEmail(),
+                user.getPassword(),
+
+                List.of(
+                        new SimpleGrantedAuthority(
+                                authority
+                        )
+                )
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\JwtService.java ==========
+package com.abrar.shopsphere.service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+
+@Service
+public class JwtService {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtService.class);
+
+
+    // ============================================================
+    // SECRET KEY
+    // ============================================================
+
+    /*
+     * Secret key used to sign and verify JWTs.
+     *
+     * IMPORTANT:
+     * In production, this should NOT be hardcoded.
+     * We will move it to environment/configuration
+     * during the production security review.
+     */
+    private static final String SECRET_KEY =
+            "ShopSphereSuperSecretKeyForJWTGeneration123456789";
+
+
+    // ============================================================
+    // JWT EXPIRATION
+    // ============================================================
+
+    /*
+     * Token expiration:
+     *
+     * 1000 milliseconds
+     * Ã— 60 seconds
+     * Ã— 60 minutes
+     *
+     * = 1 hour
+     */
+    private static final long EXPIRATION_TIME =
+            1000 * 60 * 60;
+
+
+    private final SecretKey secretKey;
+
+
+    // ============================================================
+    // CONSTRUCTOR
+    // ============================================================
+
+    public JwtService() {
+
+        this.secretKey =
+                Keys.hmacShaKeyFor(
+                        SECRET_KEY.getBytes(StandardCharsets.UTF_8)
+                );
+    }
+
+
+    // ============================================================
+    // GENERATE JWT
+    // ============================================================
+
+    public String generateToken(
+            String email,
+            String role) {
+
+        Date now =
+                new Date();
+
+        Date expiration =
+                new Date(
+                        now.getTime()
+                                + EXPIRATION_TIME
+                );
+
+
+        return Jwts.builder()
+
+                // ----------------------------------------------
+                // SUBJECT
+                // ----------------------------------------------
+
+                .subject(email)
+
+                // ----------------------------------------------
+                // ROLE CLAIM
+                // ----------------------------------------------
+
+                .claim("role", role)
+
+                // ----------------------------------------------
+                // ISSUED AT
+                // ----------------------------------------------
+
+                .issuedAt(now)
+
+                // ----------------------------------------------
+                // EXPIRATION
+                // ----------------------------------------------
+
+                .expiration(expiration)
+
+                // ----------------------------------------------
+                // SIGN JWT
+                // ----------------------------------------------
+
+                .signWith(secretKey)
+
+                .compact();
+    }
+
+
+    // ============================================================
+    // EXTRACT USERNAME / EMAIL
+    // ============================================================
+
+    public String extractUsername(
+            String token) {
+
+        return extractAllClaims(token)
+                .getSubject();
+    }
+
+
+    // ============================================================
+    // EXTRACT ROLE
+    // ============================================================
+
+    public String extractRole(
+            String token) {
+
+        return extractAllClaims(token)
+                .get("role", String.class);
+    }
+
+
+    // ============================================================
+    // EXTRACT ALL CLAIMS
+    // ============================================================
+
+    private Claims extractAllClaims(
+            String token) {
+
+        return Jwts.parser()
+
+                .verifyWith(secretKey)
+
+                .build()
+
+                .parseSignedClaims(token)
+
+                .getPayload();
+    }
+
+
+    // ============================================================
+    // VALIDATE TOKEN
+    // ============================================================
+
+    public boolean isTokenValid(
+            String token,
+            String username) {
+
+        try {
+
+            String extractedUsername =
+                    extractUsername(token);
+
+
+            boolean usernameMatches =
+                    extractedUsername.equals(username);
+
+
+            boolean tokenExpired =
+                    isTokenExpired(token);
+
+
+            boolean valid =
+                    usernameMatches
+                            && !tokenExpired;
+
+
+            if (!usernameMatches) {
+
+                logger.warn(
+                        "JWT username mismatch. Token user: {}, expected user: {}",
+                        extractedUsername,
+                        username
+                );
+            }
+
+
+            if (tokenExpired) {
+
+                logger.warn(
+                        "JWT token has expired for user: {}",
+                        username
+                );
+            }
+
+
+            return valid;
+
+        } catch (Exception e) {
+
+            logger.error(
+                    "JWT validation failed",
+                    e
+            );
+
+            return false;
+        }
+    }
+
+
+    // ============================================================
+    // CHECK TOKEN EXPIRATION
+    // ============================================================
+
+    private boolean isTokenExpired(
+            String token) {
+
+        Date expiration =
+                extractAllClaims(token)
+                        .getExpiration();
+
+        return expiration.before(
+                new Date()
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\OrderEventPublisher.java ==========
+package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.event.OrderCreatedEvent;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OrderEventPublisher {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    OrderEventPublisher.class
+            );
+
+    private final KafkaTemplate<String, OrderCreatedEvent>
+            kafkaTemplate;
+
+    public OrderEventPublisher(
+            KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate) {
+
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    public void publishOrderCreated(
+            OrderCreatedEvent event) {
+
+        kafkaTemplate.send(
+                "order-created",
+                event.getOrderId().toString(),
+                event
+        );
+
+        log.info(
+                "OrderCreated event published. " +
+                        "eventId={}, orderId={}",
+                event.getEventId(),
+                event.getOrderId()
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\OrderService.java ==========
+
+        package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.config.RateLimitProperties;
+
+import com.abrar.shopsphere.dto.OrderItemRequestDTO;
+import com.abrar.shopsphere.dto.OrderItemResponseDTO;
+import com.abrar.shopsphere.dto.OrderRequestDTO;
+import com.abrar.shopsphere.dto.OrderResponseDTO;
+
+import com.abrar.shopsphere.entity.Order;
+import com.abrar.shopsphere.entity.OrderItem;
+import com.abrar.shopsphere.entity.Product;
+import com.abrar.shopsphere.entity.User;
+
+import com.abrar.shopsphere.event.OrderCreatedEvent;
+import com.abrar.shopsphere.event.OrderItemEvent;
+
+import com.abrar.shopsphere.exception.InsufficientStockException;
+
+import com.abrar.shopsphere.repository.OrderRepository;
+import com.abrar.shopsphere.repository.ProductRepository;
+import com.abrar.shopsphere.repository.UserRepository;
+
+import org.slf4j.MDC;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import org.springframework.stereotype.Service;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+    private final OutboxService outboxService;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final RateLimitService rateLimitService;
+    private final RateLimitProperties rateLimitProperties;
+
+    public OrderService(
+            OrderRepository orderRepository,
+            OutboxService outboxService,
+            ProductRepository productRepository,
+            UserRepository userRepository,
+            RateLimitService rateLimitService,
+            RateLimitProperties rateLimitProperties) {
+
+        this.orderRepository = orderRepository;
+        this.outboxService = outboxService;
+        this.productRepository = productRepository;
+        this.userRepository = userRepository;
+        this.rateLimitService = rateLimitService;
+        this.rateLimitProperties = rateLimitProperties;
+    }
+
+    /**
+     * Preferred checkout endpoint service method.
+     * The user ID is obtained from the authenticated JWT principal,
+     * never from the browser request.
+     */
+    @Transactional
+    public OrderResponseDTO createOrderForAuthenticatedUser(
+            OrderRequestDTO requestDTO) {
+
+        User user = getAuthenticatedUser();
+
+        return createOrder(user.getId(), requestDTO);
+    }
+
+    /**
+     * Creates an order for a specific user.
+     * Ownership is verified before any inventory is modified.
+     */
+    @Transactional
+    public OrderResponseDTO createOrder(
+            Long userId,
+            OrderRequestDTO requestDTO) {
+
+        User authenticatedUser = getAuthenticatedUser();
+
+        if (!authenticatedUser.getId().equals(userId)) {
+            throw new AccessDeniedException(
+                    "You are not allowed to create an order for another user."
+            );
+        }
+
+        // Rate limiting: per authenticated user.
+        int limit = rateLimitProperties
+                .getOrderCreate()
+                .getLimit();
+
+        long windowSeconds = rateLimitProperties
+                .getOrderCreate()
+                .getWindowSeconds();
+
+        String rateLimitKey =
+                "rate_limit:order-create:" + authenticatedUser.getId();
+
+        rateLimitService.checkRateLimit(
+                rateLimitKey,
+                limit,
+                Duration.ofSeconds(windowSeconds)
+        );
+
+        // Create the order.
+        Order order = new Order();
+        order.setUser(authenticatedUser);
+        order.setStatus("CREATED");
+
+        double totalAmount = 0.0;
+
+        List<OrderItemResponseDTO> responseItems =
+                new ArrayList<>();
+
+        // Process each requested product while holding a database row lock.
+        for (OrderItemRequestDTO itemDTO : requestDTO.getItems()) {
+
+            Product product = productRepository
+                    .findByIdForUpdate(itemDTO.getProductId())
+                    .orElseThrow(() ->
+                            new RuntimeException("Product not found")
+                    );
+
+            int requestedQuantity = itemDTO.getQuantity();
+
+            if (product.getStock() < requestedQuantity) {
+                throw new InsufficientStockException(
+                        "Insufficient stock for product: "
+                                + product.getName()
+                );
+            }
+
+            // Decrease stock within the current transaction.
+            product.setStock(
+                    product.getStock() - requestedQuantity
+            );
+
+            double itemTotal =
+                    product.getPrice() * requestedQuantity;
+
+            totalAmount += itemTotal;
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProduct(product);
+            orderItem.setQuantity(requestedQuantity);
+            orderItem.setPrice(product.getPrice());
+
+            order.addItem(orderItem);
+
+            responseItems.add(
+                    new OrderItemResponseDTO(
+                            product.getId(),
+                            requestedQuantity,
+                            product.getPrice()
+                    )
+            );
+        }
+
+        order.setTotalAmount(totalAmount);
+
+        // Persist the order.
+        Order savedOrder = orderRepository.save(order);
+
+        // Build the event items for the transactional outbox.
+        List<OrderItemEvent> eventItems = responseItems
+                .stream()
+                .map(item -> new OrderItemEvent(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        item.getPrice()
+                ))
+                .toList();
+
+        String correlationId = MDC.get("requestId");
+
+        if (correlationId == null || correlationId.isBlank()) {
+            correlationId = UUID.randomUUID().toString();
+        }
+
+        OrderCreatedEvent orderCreatedEvent =
+                new OrderCreatedEvent(
+                        UUID.randomUUID(),
+                        correlationId,
+                        savedOrder.getId(),
+                        authenticatedUser.getId(),
+                        savedOrder.getTotalAmount(),
+                        savedOrder.getStatus(),
+                        LocalDateTime.now(),
+                        eventItems
+                );
+
+        // Preserve the existing outbox integration.
+        outboxService.saveOrderCreatedEvent(orderCreatedEvent);
+
+        return new OrderResponseDTO(
+                savedOrder.getId(),
+                savedOrder.getTotalAmount(),
+                savedOrder.getStatus(),
+                responseItems
+        );
+    }
+
+    /**
+     * Returns the authenticated user's order history only.
+     */
+    @Transactional(readOnly = true)
+    public List<OrderResponseDTO> getMyOrders() {
+
+        User user = getAuthenticatedUser();
+
+        return orderRepository
+                .findOrdersWithItemsByUserId(user.getId())
+                .stream()
+                .map(this::toOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Resolves the logged-in user using the email in the security principal.
+     */
+    private User getAuthenticatedUser() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || "anonymousUser".equals(authentication.getName())) {
+
+            throw new AccessDeniedException(
+                    "Authentication is required."
+            );
+        }
+
+        return userRepository
+                .findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated user not found."
+                        )
+                );
+    }
+
+    /**
+     * Converts an order entity into a response DTO.
+     */
+    private OrderResponseDTO toOrderResponse(Order order) {
+
+        List<OrderItemResponseDTO> items =
+                order.getItems()
+                        .stream()
+                        .map(item -> new OrderItemResponseDTO(
+                                item.getProduct().getId(),
+                                item.getQuantity(),
+                                item.getPrice()
+                        ))
+                        .collect(Collectors.toList());
+
+        return new OrderResponseDTO(
+                order.getId(),
+                order.getTotalAmount(),
+                order.getStatus(),
+                items
+        );
+    }
+}
+
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\ProductService.java ==========
+package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.config.RateLimitProperties;
+import com.abrar.shopsphere.dto.ProductRequestDTO;
+import com.abrar.shopsphere.dto.ProductResponseDTO;
+import com.abrar.shopsphere.entity.Product;
+import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.exception.ProductNotFoundException;
+
+import com.abrar.shopsphere.repository.ProductRepository;
+import com.abrar.shopsphere.repository.UserRepository;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.List;
+
+@Service
+public class ProductService {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(ProductService.class);
+
+    private final ProductRepository productRepository;
+
+    private final UserRepository userRepository;
+
+    private final StringRedisTemplate redisTemplate;
+
+    private final ObjectMapper objectMapper;
+
+    private final RateLimitService rateLimitService;
+
+    private final RateLimitProperties rateLimitProperties;
+
+
+    // ============================================================
+    // CONSTRUCTOR
+    // ============================================================
+
+    public ProductService(
+            ProductRepository productRepository,
+            UserRepository userRepository,
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper,
+            RateLimitService rateLimitService,
+            RateLimitProperties rateLimitProperties) {
+
+        this.productRepository = productRepository;
+
+        this.userRepository = userRepository;
+
+        this.redisTemplate = redisTemplate;
+
+        this.objectMapper = objectMapper;
+
+        this.rateLimitService = rateLimitService;
+
+        this.rateLimitProperties = rateLimitProperties;
+    }
+
+
+    // ============================================================
+    // CREATE PRODUCT
+    // ============================================================
+
+    public ProductResponseDTO addProduct(
+            ProductRequestDTO dto) {
+
+        logger.info(
+                "Creating product: {}",
+                dto.getName()
+        );
+
+
+        // --------------------------------------------------------
+        // GET CURRENT AUTHENTICATED SELLER
+        // --------------------------------------------------------
+
+        User currentUser =
+                getCurrentAuthenticatedUser();
+
+
+        // --------------------------------------------------------
+        // RATE LIMIT PRODUCT CREATION
+        // --------------------------------------------------------
+
+        int limit =
+                rateLimitProperties
+                        .getProductCreate()
+                        .getLimit();
+
+        long windowSeconds =
+                rateLimitProperties
+                        .getProductCreate()
+                        .getWindowSeconds();
+
+        String rateLimitKey =
+                "rate_limit:product-create:"
+                        + currentUser.getId();
+
+        rateLimitService.checkRateLimit(
+                rateLimitKey,
+                limit,
+                Duration.ofSeconds(windowSeconds)
+        );
+
+
+        // --------------------------------------------------------
+        // CHECK DUPLICATE PRODUCT
+        // --------------------------------------------------------
+
+        if (productRepository.existsByName(
+                dto.getName())) {
+
+            throw new IllegalArgumentException(
+                    "Product already exists."
+            );
+        }
+
+
+        // --------------------------------------------------------
+        // CREATE PRODUCT
+        // --------------------------------------------------------
+
+        Product product =
+                new Product();
+
+        product.setName(
+                dto.getName()
+        );
+
+        product.setDescription(
+                dto.getDescription()
+        );
+
+        product.setPrice(
+                dto.getPrice()
+        );
+
+        product.setStock(
+                dto.getStock()
+        );
+
+
+        // --------------------------------------------------------
+        // ASSIGN PRODUCT OWNER
+        // --------------------------------------------------------
+
+        product.setSeller(
+                currentUser
+        );
+
+
+        // --------------------------------------------------------
+        // SAVE
+        // --------------------------------------------------------
+
+        Product savedProduct =
+                productRepository.save(product);
+
+
+        logger.info(
+                "Product created successfully with id {} by user {}",
+                savedProduct.getId(),
+                currentUser.getEmail()
+        );
+
+
+        return mapToResponse(
+                savedProduct
+        );
+    }
+
+
+    // ============================================================
+    // GET ALL PRODUCTS
+    // ============================================================
+
+    public Page<ProductResponseDTO> getAllProducts(
+            int page,
+            int size,
+            String sortBy) {
+
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by(sortBy)
+                );
+
+        return productRepository
+                .findAll(pageable)
+                .map(this::mapToResponse);
+    }
+
+
+    // ============================================================
+    // GET PRODUCT BY ID
+    // ============================================================
+
+    public ProductResponseDTO getProductById(
+            Long id) {
+
+        String cacheKey =
+                getProductCacheKey(id);
+
+
+        // --------------------------------------------------------
+        // CHECK REDIS
+        // --------------------------------------------------------
+
+        String cachedProduct = null;
+
+        try {
+
+            cachedProduct =
+                    redisTemplate
+                            .opsForValue()
+                            .get(cacheKey);
+
+        } catch (Exception e) {
+
+            logger.warn(
+                    "Redis unavailable while reading product {}, falling back to database",
+                    id,
+                    e
+            );
+        }
+
+
+        // --------------------------------------------------------
+        // CACHE HIT
+        // --------------------------------------------------------
+
+        if (cachedProduct != null) {
+
+            logger.info(
+                    "Cache HIT for product {}",
+                    id
+            );
+
+            try {
+
+                return objectMapper.readValue(
+                        cachedProduct,
+                        ProductResponseDTO.class
+                );
+
+            } catch (JsonProcessingException e) {
+
+                logger.warn(
+                        "Invalid cached data for product {}, ignoring cache",
+                        id,
+                        e
+                );
+            }
+        }
+
+
+        // --------------------------------------------------------
+        // CACHE MISS â†’ DATABASE
+        // --------------------------------------------------------
+
+        logger.info(
+                "Cache MISS for product {}",
+                id
+        );
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ProductNotFoundException(
+                                        "Product not found with id: "
+                                                + id
+                                )
+                        );
+
+
+        ProductResponseDTO response =
+                mapToResponse(product);
+
+
+        // --------------------------------------------------------
+        // CACHE PRODUCT
+        // --------------------------------------------------------
+
+        try {
+
+            String json =
+                    objectMapper.writeValueAsString(
+                            response
+                    );
+
+            try {
+
+                redisTemplate
+                        .opsForValue()
+                        .set(
+                                cacheKey,
+                                json,
+                                Duration.ofMinutes(10)
+                        );
+
+                logger.info(
+                        "Product {} cached successfully",
+                        id
+                );
+
+            } catch (Exception e) {
+
+                logger.warn(
+                        "Redis unavailable while caching product {}, returning database result",
+                        id,
+                        e
+                );
+            }
+
+        } catch (JsonProcessingException e) {
+
+            logger.error(
+                    "Failed to serialize product {} for Redis",
+                    id,
+                    e
+            );
+        }
+
+
+        return response;
+    }
+
+
+    // ============================================================
+    // UPDATE PRODUCT
+    // ============================================================
+
+    @PreAuthorize("@productSecurity.isOwner(#id)")
+    public ProductResponseDTO updateProduct(
+            Long id,
+            ProductRequestDTO dto) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ProductNotFoundException(
+                                        "Product not found with id: "
+                                                + id
+                                )
+                        );
+
+
+        // --------------------------------------------------------
+        // UPDATE PRODUCT
+        // --------------------------------------------------------
+
+        product.setName(
+                dto.getName()
+        );
+
+        product.setDescription(
+                dto.getDescription()
+        );
+
+        product.setPrice(
+                dto.getPrice()
+        );
+
+        product.setStock(
+                dto.getStock()
+        );
+
+
+        // --------------------------------------------------------
+        // SAVE
+        // --------------------------------------------------------
+
+        Product updatedProduct =
+                productRepository.save(product);
+
+
+        // --------------------------------------------------------
+        // INVALIDATE CACHE
+        // --------------------------------------------------------
+
+        String cacheKey =
+                getProductCacheKey(id);
+
+        try {
+
+            redisTemplate.delete(
+                    cacheKey
+            );
+
+            logger.info(
+                    "Cache invalidated for product {}",
+                    id
+            );
+
+        } catch (Exception e) {
+
+            logger.warn(
+                    "Redis unavailable while invalidating cache for product {}",
+                    id,
+                    e
+            );
+        }
+
+
+        logger.info(
+                "Product updated successfully with id {}",
+                updatedProduct.getId()
+        );
+
+
+        return mapToResponse(
+                updatedProduct
+        );
+    }
+
+
+    // ============================================================
+    // DELETE PRODUCT
+    // ============================================================
+
+    @PreAuthorize("@productSecurity.isOwner(#id)")
+    public void deleteProduct(
+            Long id) {
+
+        Product product =
+                productRepository.findById(id)
+                        .orElseThrow(() ->
+                                new ProductNotFoundException(
+                                        "Product not found with id: "
+                                                + id
+                                )
+                        );
+
+
+        // --------------------------------------------------------
+        // DELETE FROM DATABASE
+        // --------------------------------------------------------
+
+        productRepository.delete(
+                product
+        );
+
+
+        // --------------------------------------------------------
+        // INVALIDATE REDIS
+        // --------------------------------------------------------
+
+        String cacheKey =
+                getProductCacheKey(id);
+
+        try {
+
+            redisTemplate.delete(
+                    cacheKey
+            );
+
+            logger.info(
+                    "Cache invalidated for deleted product {}",
+                    id
+            );
+
+        } catch (Exception e) {
+
+            logger.warn(
+                    "Redis unavailable while invalidating deleted product {}",
+                    id,
+                    e
+            );
+        }
+
+
+        logger.info(
+                "Product deleted successfully with id {}",
+                id
+        );
+    }
+
+
+    // ============================================================
+    // SEARCH PRODUCTS
+    // ============================================================
+
+    public List<ProductResponseDTO> searchProducts(
+            String name) {
+
+        return productRepository
+                .findByNameContainingIgnoreCase(name)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+
+    // ============================================================
+    // FILTER BY PRICE RANGE
+    // ============================================================
+
+    public List<ProductResponseDTO> getProductsByPriceRange(
+            Double minPrice,
+            Double maxPrice) {
+
+        return productRepository
+                .findByPriceBetween(
+                        minPrice,
+                        maxPrice
+                )
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+
+    // ============================================================
+    // FILTER BY CATEGORY
+    // ============================================================
+
+    public List<ProductResponseDTO> getProductsByCategory(
+            String categoryName) {
+
+        return productRepository
+                .findByCategoryName(categoryName)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+
+    // ============================================================
+    // GET CURRENT AUTHENTICATED USER
+    // ============================================================
+
+    private User getCurrentAuthenticatedUser() {
+
+        var authentication =
+                org.springframework.security.core.context
+                        .SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+
+        if (authentication == null
+                || !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "No authenticated user found."
+            );
+        }
+
+
+        String email =
+                authentication.getName();
+
+
+        return userRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated user not found in database."
+                        )
+                );
+    }
+
+
+    // ============================================================
+    // REDIS CACHE KEY
+    // ============================================================
+
+    private String getProductCacheKey(
+            Long id) {
+
+        return "product:" + id;
+    }
+
+
+    // ============================================================
+    // ENTITY â†’ DTO
+    // ============================================================
+
+    private ProductResponseDTO mapToResponse(
+            Product product) {
+
+        return new ProductResponseDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice()
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\src\main\java\com\abrar\shopsphere\service\UserService.java ==========
+package com.abrar.shopsphere.service;
+
+import com.abrar.shopsphere.dto.UserRequestDTO;
+import com.abrar.shopsphere.dto.UserResponseDTO;
+import com.abrar.shopsphere.entity.User;
+import com.abrar.shopsphere.exception.UserNotFoundException;
+import com.abrar.shopsphere.repository.UserRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    // Create User
+    public UserResponseDTO addUser(UserRequestDTO dto) {
+
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("Email already exists.");
+        }
+
+        User user = new User();
+
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPhoneNumber(dto.getPhoneNumber());
+
+        User savedUser = userRepository.save(user);
+
+        return mapToResponse(savedUser);
+    }
+
+    // Get All Users
+    public List<UserResponseDTO> getAllUsers() {
+
+        return userRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // Get User By Id
+    public UserResponseDTO getUserById(Long id) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
+
+        return mapToResponse(user);
+    }
+
+    // Update User
+    public UserResponseDTO updateUser(Long id,
+                                      UserRequestDTO dto) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
+
+        user.setFirstName(dto.getFirstName());
+        user.setLastName(dto.getLastName());
+        user.setEmail(dto.getEmail());
+        user.setPhoneNumber(dto.getPhoneNumber());
+
+        User updatedUser = userRepository.save(user);
+
+        return mapToResponse(updatedUser);
+    }
+
+    // Delete User
+    public void deleteUser(Long id) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
+
+        userRepository.delete(user);
+    }
+
+    // Convert Entity to DTO
+    private UserResponseDTO mapToResponse(User user) {
+
+        return new UserResponseDTO(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getPhoneNumber()
+        );
+    }
+}
+
+
+========== FILE: C:\Users\hppav\Downloads\Shopify\pom.xml ==========
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example</groupId>
+    <artifactId>shopsphere</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <name>ShopSphere</name>
+    <description>shopSphere</description>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
+
+    <dependencies>
+
+        <!-- Redis -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- Kafka -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- DevTools -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Security -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- PostgreSQL for the application -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- JPA tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Security tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Validation tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Web MVC tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- In-memory database: tests only -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Swagger / OpenAPI -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.9</version>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- Spring Boot -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Java compiler and Lombok annotation processing -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>default-testCompile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

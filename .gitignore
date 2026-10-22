@@ -31,3 +31,49 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+application-local.properties
+application-secret.properties
+
+# Local database diagnostic files
+DbConnectionCheck.java
+DbConnectionCheck.class
+
+# Local build output
+target/
+dist/
+node_modules/
+
+# Temporary backups and diagnostic artifacts
+shopsphere-ui-backup-*/
+DbConnectionCheck.java
+DbConnectionCheck.class
+kafka-container-inspect-backup.json
+shopsphere-deploy-check.json
+shopsphere-ssm-parameters.json
+shopsphere-temp-s3-policy.json
+ShopSphere_Month8_Source.zip
+
+# Temporary frontend archives and local AWS parameter files
+shopsphere-ui/*.zip
+shopsphere-ui/*policy*.json
+shopsphere-ui/*ssm-parameters*.json
+
+# Local utility build output
+tools/**/*.class
+tools/classpath.txt
+
+# Generated local tooling artifacts
+tools/classpath.txt
+tools/**/*.class
+
+# Local AWS diagnostic files
+shopsphere-ui/shopsphere-download-policy.json
+shopsphere-ui/shopsphere-ssm-parameters.json
+
+# Local archives
+shopsphere-ui/*.zip
