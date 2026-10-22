@@ -83,3 +83,6 @@ tools/**/*.class
 
 # Local AWS SSM tunnel parameters
 /ssm-parameters.json
+
+# Local AWS SSM parameter files
+/ssm-params.json
