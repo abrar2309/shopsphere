@@ -77,3 +77,6 @@ shopsphere-ui/shopsphere-ssm-parameters.json
 
 # Local archives
 shopsphere-ui/*.zip
+
+tools/classpath.txt
+tools/**/*.class
