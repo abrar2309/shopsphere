@@ -489,4 +489,13 @@ At the time of the documentation update, the local recovered checkout completed 
 - [Expanded system architecture and codebase guide](docs/ShopSphere_System_Architecture_and_Codebase_Guide_EXPANDED.docx)
 - [Troubleshooting and error-resolution playbook](docs/ShopSphere_Troubleshooting_Error_Resolution_Playbook_EXPANDED.docx)
 
+
+## Local runbook and product walkthrough
+
+For the Windows/PowerShell startup sequence, local service ports, database verification, environment variables, build/test commands, Docker Compose caveats and current AWS/SSM limitation, see the [Local Development and Deployment Runbook](docs/LOCAL_DEVELOPMENT_AND_DEPLOYMENT.md).
+
+The [Product Walkthrough and Screenshot Gallery](docs/PRODUCT_WALKTHROUGH.md) documents the captured customer, checkout, BGE search and seller-variant screens. Screenshot assets are supplied in the project handoff archive and are intended for the docs/demo-screenshots/ folder.
+
+> **Demo status:** there is currently no public live-demo URL or recorded live demo video. The former SSM port-forward depended on an EC2-managed instance that is stopped. The local runbook documents the separate Windows-host workflow and verification boundaries.
+
 ---
