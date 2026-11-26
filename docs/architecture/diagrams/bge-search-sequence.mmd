@@ -1,0 +1,23 @@
+sequenceDiagram
+  actor Shopper
+  participant C as BgeAiProductController
+  participant S as BgeSemanticProductSearchService
+  participant Client as BgeEmbeddingClient
+  participant API as FastAPI
+  participant Model as BGE model
+  participant JDBC as JdbcTemplate
+  participant DB as PostgreSQL
+  Shopper->>C: GET /ai/bge/products/search
+  C->>S: search(query, limit, category, price filters)
+  S->>Client: generateQueryEmbedding
+  Client->>API: POST /v1/embeddings input_type=query
+  API->>Model: Encode retrieval-prefixed query
+  Model-->>API: Normalized 384D vector
+  API-->>Client: Embedding response
+  Client-->>S: Query vector
+  S->>JDBC: Similarity query + filters
+  JDBC->>DB: Search vectors and product records
+  DB-->>JDBC: Ranked rows
+  JDBC-->>S: Product candidates
+  S-->>C: Search response DTOs
+  C-->>Shopper: JSON result
