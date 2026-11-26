@@ -1,0 +1,70 @@
+erDiagram
+  USER ||--o{ ADDRESS : owns
+  USER ||--o| CART : has
+  CART ||--o{ CART_ITEM : contains
+  PRODUCT ||--o{ CART_ITEM : chosen
+  CATEGORY ||--o{ PRODUCT : classifies
+  USER ||--o{ PRODUCT : sells
+  PRODUCT ||--o{ PRODUCT_VARIANT : has
+  USER ||--o{ ORDER : places
+  ORDER ||--|{ ORDER_ITEM : contains
+  PRODUCT ||--o{ ORDER_ITEM : referenced
+  ORDER ||--o| PAYMENT : has
+
+  USER {
+    bigint id PK
+    string email
+    string role
+  }
+  ADDRESS {
+    bigint id PK
+    bigint user_id FK
+    string city
+  }
+  CART {
+    bigint id PK
+    bigint user_id FK
+  }
+  CART_ITEM {
+    bigint id PK
+    bigint cart_id FK
+    bigint product_id FK
+    int quantity
+  }
+  CATEGORY {
+    bigint id PK
+    string name
+  }
+  PRODUCT {
+    bigint id PK
+    bigint category_id FK
+    bigint seller_id FK
+    decimal price
+    int stock
+    bigint version
+  }
+  PRODUCT_VARIANT {
+    bigint id PK
+    bigint product_id FK
+    string sku
+    int stock
+  }
+  ORDER {
+    bigint id PK
+    bigint user_id FK
+    string status
+  }
+  ORDER_ITEM {
+    bigint id PK
+    bigint order_id FK
+    bigint product_id FK
+    int quantity
+    decimal price
+  }
+  PAYMENT {
+    bigint id PK
+    bigint order_id FK
+    string payment_reference
+    string idempotency_key
+    string status
+  }
