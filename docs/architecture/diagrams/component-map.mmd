@@ -1,0 +1,49 @@
+flowchart TB
+  HTTP["HTTP / Spring Security"]
+  subgraph API["Controllers"]
+    AUTH["Auth / User"]
+    CATALOG["Product / Category"]
+    CART["Cart / Order"]
+    PAYMENT["Payment"]
+    SELLER["Seller Inventory / Analytics"]
+    ADMIN["Admin"]
+    WISH["Wishlist"]
+    AI["AI / BGE"]
+  end
+  subgraph APP["Services"]
+    IDENTITY["AuthService / UserService / JwtService"]
+    PRODUCTS["ProductService / CategoryService"]
+    SHOPPING["CartService / OrderService"]
+    PAYMENTS["PaymentService"]
+    SELLER_S["SellerInventoryService / SellerAnalyticsService"]
+    ADMIN_S["AdminDashboardService"]
+    WISH_S["WishlistService"]
+    AI_S["BgeProductEmbeddingService / BgeSemanticProductSearchService"]
+    OUTBOX["OutboxService / OutboxPublisher"]
+  end
+  subgraph DATA["Data adapters"]
+    JPA["Spring Data repositories"]
+    JDBC["JdbcTemplate"]
+    DB[("PostgreSQL")]
+  end
+  HTTP --> API
+  AUTH --> IDENTITY
+  CATALOG --> PRODUCTS
+  CART --> SHOPPING
+  PAYMENT --> PAYMENTS
+  SELLER --> SELLER_S
+  ADMIN --> ADMIN_S
+  WISH --> WISH_S
+  AI --> AI_S
+  SHOPPING --> OUTBOX
+  IDENTITY --> JPA
+  PRODUCTS --> JPA
+  SHOPPING --> JPA
+  PAYMENTS --> JPA
+  SELLER_S --> JPA
+  ADMIN_S --> JPA
+  WISH_S --> JPA
+  AI_S --> JDBC
+  OUTBOX --> JPA
+  JPA --> DB
+  JDBC --> DB
