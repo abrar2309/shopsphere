@@ -1,0 +1,15 @@
+flowchart TB
+  subgraph Local["Local Compose configuration"]
+    Browser["Browser"]
+    FE["Frontend image / container port 80"]
+    BE["Backend image / container port 8080"]
+    Browser -->|"localhost:8082"| FE
+    Browser -->|"localhost:8081 API mapping"| BE
+    FE --> BE
+  end
+  PG[("PostgreSQL at host.docker.internal:5433")]
+  Redis[("Redis at host.docker.internal:6379")]
+  Kafka[("Kafka at shopsphere-kafka:9092")]
+  BE --> PG
+  BE --> Redis
+  BE --> Kafka
