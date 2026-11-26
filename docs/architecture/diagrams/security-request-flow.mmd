@@ -1,0 +1,7 @@
+flowchart LR
+  HTTP["HTTP request"] --> CORS["CORS"]
+  CORS --> JWT["JwtAuthenticationFilter"]
+  JWT --> CONTEXT["SecurityContext"]
+  CONTEXT --> RULES["URL authorization rules"]
+  RULES --> METHOD["Method security / ownership checks"]
+  METHOD --> CONTROLLER["Controller + service"]
