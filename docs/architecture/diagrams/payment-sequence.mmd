@@ -1,0 +1,32 @@
+sequenceDiagram
+  actor Customer
+  actor Admin
+  participant PC as PaymentController
+  participant PS as PaymentService
+  participant OR as OrderRepository
+  participant PR as PaymentRepository
+  participant Product as ProductRepository
+  participant DB as PostgreSQL
+  Customer->>PC: POST payment/manual or payment/simulate
+  PC->>PS: Create payment
+  PS->>OR: Lock order owned by customer
+  OR->>DB: SELECT order FOR UPDATE
+  PS->>PR: Check idempotency key and prior payment
+  PS->>PR: Save payment state
+  PR->>DB: Persist PENDING / simulated state
+  PS-->>PC: PaymentResponseDTO
+  PC-->>Customer: Payment response
+  Admin->>PC: POST /admin/payments/{id}/verify
+  PC->>PS: verifyPayment
+  PS->>PR: Load payment
+  PS->>OR: Lock associated order
+  alt Approve
+    PS->>DB: Set payment SUCCESS / order CONFIRMED
+  else Reject
+    loop Each ordered product
+      PS->>Product: findByIdForUpdate
+      Product->>DB: Lock product row
+      PS->>DB: Restore reserved stock
+    end
+    PS->>DB: Set payment FAILURE / order PAYMENT_FAILED
+  end
