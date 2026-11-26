@@ -6,12 +6,17 @@ export async function getCart() {
   return response.data;
 }
 
-export async function addCartItem(productId, quantity = 1) {
-  const response = await apiClient.post('/cart/items', {
-    productId,
-    quantity,
-  });
+export async function addCartItem(productId, quantity = 1, variantId = null) {
+  const payload = {
+    productId: Number(productId),
+    quantity: Number(quantity),
+  };
 
+  if (variantId !== null && variantId !== undefined && variantId !== '') {
+    payload.variantId = Number(variantId);
+  }
+
+  const response = await apiClient.post('/cart/items', payload);
   return response.data;
 }
 

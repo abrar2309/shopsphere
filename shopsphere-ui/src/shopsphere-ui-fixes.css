@@ -1,0 +1,69 @@
+/* ShopSphere focused storefront repair */
+.product-image-fallback {
+    width: 100%;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px;
+    box-sizing: border-box;
+    background: linear-gradient(145deg, #f4f5f1, #e8ece6);
+    color: #526258;
+    text-align: center;
+    overflow: hidden;
+}
+.product-image-placeholder-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border: 1px solid #cbd5cc;
+    border-radius: 16px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+}
+.product-image-fallback small {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.wishlist-detail-button,
+.wishlist-toggle {
+    font-family: inherit;
+    line-height: 1.25;
+}
+.shop-overlay,
+.shop-dialog,
+.product-detail-dialog,
+.product-detail-content,
+.product-detail-body {
+    box-sizing: border-box;
+    min-width: 0;
+}
+.shop-dialog,
+.product-detail-dialog {
+    max-width: min(960px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.shop-dialog img,
+.product-detail-dialog img {
+    max-width: 100%;
+}
+.product-detail-dialog *,
+.shop-dialog * {
+    min-width: 0;
+}
+@media (max-width: 700px) {
+    .shop-dialog,
+    .product-detail-dialog {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+}

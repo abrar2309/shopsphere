@@ -1,173 +1,90 @@
+
 package com.abrar.shopsphere.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
 
 @Service
 public class JwtService {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(JwtService.class);
-
-
-    // ============================================================
-    // SECRET KEY
-    // ============================================================
-
-    /*
-     * Secret key used to sign and verify JWTs.
-     *
-     * IMPORTANT:
-     * In production, this should NOT be hardcoded.
-     * We will move it to environment/configuration
-     * during the production security review.
-     */
-    private static final String SECRET_KEY =
-            "ShopSphereSuperSecretKeyForJWTGeneration123456789";
-
-
-    // ============================================================
-    // JWT EXPIRATION
-    // ============================================================
-
-    /*
-     * Token expiration:
-     *
-     * 1000 milliseconds
-     * × 60 seconds
-     * × 60 minutes
-     *
-     * = 1 hour
-     */
     private static final long EXPIRATION_TIME =
-            1000 * 60 * 60;
-
+            1000L * 60 * 60;
 
     private final SecretKey secretKey;
 
+    public JwtService(
+            @Value("${shopsphere.jwt.secret}") String encodedSecret) {
 
-    // ============================================================
-    // CONSTRUCTOR
-    // ============================================================
+        if (encodedSecret == null || encodedSecret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT secret must be configured."
+            );
+        }
 
-    public JwtService() {
+        final byte[] decodedSecret;
 
-        this.secretKey =
-                Keys.hmacShaKeyFor(
-                        SECRET_KEY.getBytes(StandardCharsets.UTF_8)
-                );
+        try {
+            decodedSecret = Base64.getDecoder().decode(encodedSecret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalStateException(
+                    "JWT secret must be a valid Base64 value.",
+                    ex
+            );
+        }
+
+        if (decodedSecret.length < 32) {
+            throw new IllegalStateException(
+                    "JWT HMAC secret must contain at least 256 bits."
+            );
+        }
+
+        this.secretKey = Keys.hmacShaKeyFor(decodedSecret);
     }
 
+    public String generateToken(String email, String role) {
 
-    // ============================================================
-    // GENERATE JWT
-    // ============================================================
+        Date now = new Date();
 
-    public String generateToken(
-            String email,
-            String role) {
-
-        Date now =
-                new Date();
-
-        Date expiration =
-                new Date(
-                        now.getTime()
-                                + EXPIRATION_TIME
-                );
-
+        Date expiration = new Date(
+                now.getTime() + EXPIRATION_TIME
+        );
 
         return Jwts.builder()
-
-                // ----------------------------------------------
-                // SUBJECT
-                // ----------------------------------------------
-
                 .subject(email)
-
-                // ----------------------------------------------
-                // ROLE CLAIM
-                // ----------------------------------------------
-
                 .claim("role", role)
-
-                // ----------------------------------------------
-                // ISSUED AT
-                // ----------------------------------------------
-
                 .issuedAt(now)
-
-                // ----------------------------------------------
-                // EXPIRATION
-                // ----------------------------------------------
-
                 .expiration(expiration)
-
-                // ----------------------------------------------
-                // SIGN JWT
-                // ----------------------------------------------
-
                 .signWith(secretKey)
-
                 .compact();
     }
 
+    public String extractUsername(String token) {
 
-    // ============================================================
-    // EXTRACT USERNAME / EMAIL
-    // ============================================================
-
-    public String extractUsername(
-            String token) {
-
-        return extractAllClaims(token)
-                .getSubject();
+        return extractAllClaims(token).getSubject();
     }
 
-
-    // ============================================================
-    // EXTRACT ROLE
-    // ============================================================
-
-    public String extractRole(
-            String token) {
+    public String extractRole(String token) {
 
         return extractAllClaims(token)
                 .get("role", String.class);
     }
 
-
-    // ============================================================
-    // EXTRACT ALL CLAIMS
-    // ============================================================
-
-    private Claims extractAllClaims(
-            String token) {
+    private Claims extractAllClaims(String token) {
 
         return Jwts.parser()
-
                 .verifyWith(secretKey)
-
                 .build()
-
                 .parseSignedClaims(token)
-
                 .getPayload();
     }
-
-
-    // ============================================================
-    // VALIDATE TOKEN
-    // ============================================================
 
     public boolean isTokenValid(
             String token,
@@ -175,69 +92,20 @@ public class JwtService {
 
         try {
 
-            String extractedUsername =
-                    extractUsername(token);
+            Claims claims = extractAllClaims(token);
 
+            String extractedUsername = claims.getSubject();
 
-            boolean usernameMatches =
-                    extractedUsername.equals(username);
+            Date expiration = claims.getExpiration();
 
+            return extractedUsername != null
+                    && extractedUsername.equals(username)
+                    && expiration != null
+                    && expiration.after(new Date());
 
-            boolean tokenExpired =
-                    isTokenExpired(token);
-
-
-            boolean valid =
-                    usernameMatches
-                            && !tokenExpired;
-
-
-            if (!usernameMatches) {
-
-                logger.warn(
-                        "JWT username mismatch. Token user: {}, expected user: {}",
-                        extractedUsername,
-                        username
-                );
-            }
-
-
-            if (tokenExpired) {
-
-                logger.warn(
-                        "JWT token has expired for user: {}",
-                        username
-                );
-            }
-
-
-            return valid;
-
-        } catch (Exception e) {
-
-            logger.error(
-                    "JWT validation failed",
-                    e
-            );
+        } catch (Exception ex) {
 
             return false;
         }
-    }
-
-
-    // ============================================================
-    // CHECK TOKEN EXPIRATION
-    // ============================================================
-
-    private boolean isTokenExpired(
-            String token) {
-
-        Date expiration =
-                extractAllClaims(token)
-                        .getExpiration();
-
-        return expiration.before(
-                new Date()
-        );
     }
 }

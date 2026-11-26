@@ -1,10 +1,14 @@
+
 package com.abrar.shopsphere.controller;
 
-import com.abrar.shopsphere.dto.UserRequestDTO;
+import com.abrar.shopsphere.dto.UserProfileUpdateDTO;
 import com.abrar.shopsphere.dto.UserResponseDTO;
 import com.abrar.shopsphere.service.UserService;
+
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,49 +23,44 @@ public class UserController {
         this.userService = userService;
     }
 
-    // Create User
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDTO addUser(
-            @Valid
-            @RequestBody UserRequestDTO requestDTO) {
+    @GetMapping("/me")
+    public UserResponseDTO getMyProfile(
+            Authentication authentication) {
 
-        return userService.addUser(requestDTO);
+        return userService.getCurrentUser(
+                authentication.getName()
+        );
     }
 
-    // Get All Users
+    @PutMapping("/me")
+    public UserResponseDTO updateMyProfile(
+            Authentication authentication,
+            @Valid @RequestBody UserProfileUpdateDTO dto) {
+
+        return userService.updateCurrentUser(
+                authentication.getName(),
+                dto
+        );
+    }
+
+    // ADMIN ONLY
     @GetMapping
     public List<UserResponseDTO> getAllUsers() {
-
         return userService.getAllUsers();
     }
 
-    // Get User By Id
-    @GetMapping("/{id}")
+    // ADMIN ONLY
+    @GetMapping("/{id:[0-9]+}")
     public UserResponseDTO getUserById(
             @PathVariable Long id) {
 
         return userService.getUserById(id);
     }
 
-    // Update User
-    @PutMapping("/{id}")
-    public UserResponseDTO updateUser(
-
-            @PathVariable Long id,
-
-            @Valid
-            @RequestBody UserRequestDTO requestDTO) {
-
-        return userService.updateUser(id, requestDTO);
-    }
-
-    // Delete User
-    @DeleteMapping("/{id}")
+    // ADMIN ONLY
+    @DeleteMapping("/{id:[0-9]+}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(
-            @PathVariable Long id) {
-
+    public void deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
     }
 }

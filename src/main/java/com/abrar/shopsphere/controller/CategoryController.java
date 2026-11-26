@@ -1,9 +1,14 @@
+
 package com.abrar.shopsphere.controller;
 
 import com.abrar.shopsphere.dto.CategoryRequestDTO;
 import com.abrar.shopsphere.dto.CategoryResponseDTO;
+import com.abrar.shopsphere.dto.CategoryWithProductsResponseDTO;
 import com.abrar.shopsphere.service.CategoryService;
+
 import jakarta.validation.Valid;
+
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,11 +49,23 @@ public class CategoryController {
         return categoryService.getById(id);
     }
 
+    // Paginated categories with products
+    @GetMapping("/page-with-products")
+    public Page<CategoryWithProductsResponseDTO>
+    getCategoriesWithProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return categoryService.getCategoriesWithProducts(
+                page,
+                size
+        );
+    }
+
     // Update Category
     @PutMapping("/{id}")
     public CategoryResponseDTO updateCategory(
             @PathVariable Long id,
-
             @Valid
             @RequestBody CategoryRequestDTO requestDTO) {
 

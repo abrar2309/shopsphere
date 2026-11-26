@@ -1,5 +1,8 @@
 package com.abrar.shopsphere.repository;
-
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.abrar.shopsphere.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -14,5 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Check if email already exists (used during registration)
     boolean existsByEmail(String email);
-
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :userId")
+    Optional<User> findByIdForUpdate(@Param("userId") Long userId);
 }

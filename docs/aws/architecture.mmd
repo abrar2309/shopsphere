@@ -1,0 +1,35 @@
+﻿flowchart TB
+    Internet((Internet))
+
+    subgraph AWS["AWS Cloud — ap-south-1"]
+        subgraph VPC["ShopSphere VPC"]
+            IGW["Internet Gateway"]
+            ALB["Application Load Balancer"]
+
+            subgraph Public["Public Subnet Tier — 2 AZs"]
+                ALB
+            end
+
+            subgraph App["Private Application Tier — 2 AZs"]
+                NAT["Regional NAT Gateway"]
+                FE["Frontend Target Group"]
+                BE["Backend Target Group — Port 8080"]
+                APP["Spring Boot Application"]
+            end
+
+            subgraph DB["Database Tier — 2 AZs"]
+                RDS[("Amazon RDS PostgreSQL")]
+            end
+        end
+
+        S3[("Amazon S3 — Release Artifacts")]
+    end
+
+    Internet --> IGW
+    IGW --> ALB
+    ALB -->|Default route| FE
+    ALB -->|API path rules| BE
+    BE --> APP
+    APP -->|PostgreSQL 5432| RDS
+    App --> NAT
+    APP -.->|Release artifacts| S3

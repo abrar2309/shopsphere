@@ -1,0 +1,116 @@
+.shopsphere-ai-launcher {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 14px 19px;
+    border: 0;
+    border-radius: 999px;
+    background: #285640;
+    color: #fff;
+    box-shadow: 0 9px 28px rgba(32, 59, 45, .25);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.shopsphere-ai-launcher:hover { background: #1e422f; transform: translateY(-2px); }
+.shopsphere-ai-launcher span:first-child { font-size: 19px; }
+.shopsphere-ai-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 88px;
+    z-index: 1001;
+    width: min(390px, calc(100vw - 32px));
+    padding: 20px;
+    border: 1px solid #e5e8df;
+    border-radius: 16px;
+    background: #fffefa;
+    box-shadow: 0 20px 60px rgba(20, 40, 28, .2);
+}
+.shopsphere-ai-panel-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+.shopsphere-ai-kicker {
+    color: #64836d;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+.shopsphere-ai-panel-header h2 {
+    margin: 7px 0;
+    color: #203b2d;
+    font-size: 20px;
+}
+.shopsphere-ai-panel-header p {
+    margin: 0 0 15px;
+    color: #718078;
+    font-size: 12px;
+    line-height: 1.6;
+}
+.shopsphere-ai-panel-header > button {
+    align-self: flex-start;
+    border: 0;
+    background: transparent;
+    color: #718078;
+    font-size: 25px;
+    cursor: pointer;
+}
+.shopsphere-ai-form {
+    display: flex;
+    gap: 8px;
+}
+.shopsphere-ai-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #dfe3d9;
+    border-radius: 8px;
+    outline-color: #78947d;
+    font-size: 12px;
+}
+.shopsphere-ai-form button {
+    padding: 0 15px;
+    border: 0;
+    border-radius: 8px;
+    background: #285640;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+.shopsphere-ai-form button:disabled { opacity: .5; cursor: not-allowed; }
+.shopsphere-ai-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 16px;
+}
+.shopsphere-ai-quick > span {
+    width: 100%;
+    color: #718078;
+    font-size: 11px;
+    font-weight: 700;
+}
+.shopsphere-ai-quick button {
+    padding: 7px 9px;
+    border: 1px solid #e5e8df;
+    border-radius: 999px;
+    background: #f7f8f3;
+    color: #405b48;
+    font-size: 11px;
+    cursor: pointer;
+}
+.shopsphere-ai-quick button:hover { background: #eaf0e7; }
+.shopsphere-ai-powered {
+    margin-top: 15px;
+    color: #879188;
+    font-size: 10px;
+}
+@media (max-width: 480px) {
+    .shopsphere-ai-launcher { right: 14px; bottom: 14px; }
+    .shopsphere-ai-panel { right: 12px; bottom: 78px; }
+}

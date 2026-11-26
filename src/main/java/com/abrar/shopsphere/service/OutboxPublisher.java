@@ -1,17 +1,19 @@
+
 package com.abrar.shopsphere.service;
 
 import com.abrar.shopsphere.entity.OutboxEvent;
 import com.abrar.shopsphere.event.OrderCreatedEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,39 +27,26 @@ import java.util.UUID;
 public class OutboxPublisher {
 
     private static final Logger log =
-            LoggerFactory.getLogger(
-                    OutboxPublisher.class
-            );
+            LoggerFactory.getLogger(OutboxPublisher.class);
 
     private final OutboxClaimService outboxClaimService;
-
     private final OutboxStatusService outboxStatusService;
-
-    private final KafkaTemplate<
-            String,
-            OrderCreatedEvent> kafkaTemplate;
-
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
 
     public OutboxPublisher(
             OutboxClaimService outboxClaimService,
             OutboxStatusService outboxStatusService,
-            KafkaTemplate<
-                    String,
-                    OrderCreatedEvent> kafkaTemplate,
-            ObjectMapper objectMapper) {
+            KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate,
+            ObjectMapper objectMapper,
+            StringRedisTemplate redisTemplate) {
 
-        this.outboxClaimService =
-                outboxClaimService;
-
-        this.outboxStatusService =
-                outboxStatusService;
-
-        this.kafkaTemplate =
-                kafkaTemplate;
-
-        this.objectMapper =
-                objectMapper;
+        this.outboxClaimService = outboxClaimService;
+        this.outboxStatusService = outboxStatusService;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
+        this.redisTemplate = redisTemplate;
     }
 
     @Scheduled(
@@ -66,14 +55,10 @@ public class OutboxPublisher {
     )
     public void publishUnpublishedEvents() {
 
-        UUID claimToken =
-                UUID.randomUUID();
+        UUID claimToken = UUID.randomUUID();
 
         List<OutboxEvent> events =
-                outboxClaimService.claimEvents(
-                        20,
-                        claimToken
-                );
+                outboxClaimService.claimEvents(20, claimToken);
 
         if (events.isEmpty()) {
             return;
@@ -89,57 +74,124 @@ public class OutboxPublisher {
 
             try {
 
-                OrderCreatedEvent event =
-                        objectMapper.readValue(
-                                outboxEvent.getPayload(),
-                                OrderCreatedEvent.class
-                        );
+                String eventType = outboxEvent.getEventType();
 
-                kafkaTemplate.send(
-                        "order-created",
-                        event.getOrderId().toString(),
-                        event
-                ).whenComplete(
-                        (result, exception) -> {
+                if ("ProductCacheInvalidation".equals(eventType)) {
 
-                            if (exception != null) {
+                    processProductCacheInvalidation(
+                            outboxEvent,
+                            claimToken
+                    );
 
-                                log.error(
-                                        "Failed to publish outbox event. " +
-                                                "outboxId={}, eventId={}",
-                                        outboxEvent.getId(),
-                                        outboxEvent.getEventId(),
-                                        exception
-                                );
+                } else if ("OrderCreated".equals(eventType)) {
 
-                                return;
-                            }
+                    processOrderCreatedEvent(
+                            outboxEvent,
+                            claimToken
+                    );
 
-                            outboxStatusService
-                                    .markAsPublished(
-                                            outboxEvent.getId(),
-                                            claimToken
-                                    );
+                } else {
 
-                            log.info(
-                                    "Outbox event published. " +
-                                            "outboxId={}, eventId={}",
-                                    outboxEvent.getId(),
-                                    outboxEvent.getEventId()
-                            );
-                        }
-                );
+                    log.error(
+                            "Unsupported outbox event type. " +
+                                    "outboxId={}, eventType={}",
+                            outboxEvent.getId(),
+                            eventType
+                    );
+                }
 
             } catch (Exception exception) {
 
                 log.error(
-                        "Failed to deserialize outbox event. " +
+                        "Failed to process outbox event. " +
+                                "outboxId={}, eventId={}, eventType={}",
+                        outboxEvent.getId(),
+                        outboxEvent.getEventId(),
+                        outboxEvent.getEventType(),
+                        exception
+                );
+            }
+        }
+    }
+
+    private void processProductCacheInvalidation(
+            OutboxEvent outboxEvent,
+            UUID claimToken) throws Exception {
+
+        JsonNode payload =
+                objectMapper.readTree(outboxEvent.getPayload());
+
+        JsonNode productIdNode = payload.get("productId");
+
+        if (productIdNode == null
+                || !productIdNode.canConvertToLong()
+                || productIdNode.asLong() <= 0) {
+
+            throw new IllegalArgumentException(
+                    "Invalid productId in cache invalidation event"
+            );
+        }
+
+        Long productId = productIdNode.asLong();
+
+        String cacheKey = "product:v2:" + productId;
+
+        // Redis DEL is idempotent.
+        // Deleting a missing key is also considered successful.
+        redisTemplate.delete(cacheKey);
+
+        // Mark published only after Redis deletion succeeds.
+        outboxStatusService.markAsPublished(
+                outboxEvent.getId(),
+                claimToken
+        );
+
+        log.info(
+                "Product cache invalidated. productId={}, outboxId={}",
+                productId,
+                outboxEvent.getId()
+        );
+    }
+
+    private void processOrderCreatedEvent(
+            OutboxEvent outboxEvent,
+            UUID claimToken) throws Exception {
+
+        OrderCreatedEvent event =
+                objectMapper.readValue(
+                        outboxEvent.getPayload(),
+                        OrderCreatedEvent.class
+                );
+
+        kafkaTemplate.send(
+                "order-created",
+                event.getOrderId().toString(),
+                event
+        ).whenComplete((result, exception) -> {
+
+            if (exception != null) {
+
+                log.error(
+                        "Failed to publish order event. " +
                                 "outboxId={}, eventId={}",
                         outboxEvent.getId(),
                         outboxEvent.getEventId(),
                         exception
                 );
+
+                return;
             }
-        }
+
+            outboxStatusService.markAsPublished(
+                    outboxEvent.getId(),
+                    claimToken
+            );
+
+            log.info(
+                    "Order event published. outboxId={}, eventId={}",
+                    outboxEvent.getId(),
+                    outboxEvent.getEventId()
+            );
+        });
     }
 }

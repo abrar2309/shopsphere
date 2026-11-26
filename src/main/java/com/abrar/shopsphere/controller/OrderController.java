@@ -1,5 +1,5 @@
 
-        package com.abrar.shopsphere.controller;
+package com.abrar.shopsphere.controller;
 
 import com.abrar.shopsphere.dto.OrderRequestDTO;
 import com.abrar.shopsphere.dto.OrderResponseDTO;
@@ -25,7 +25,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
-    // Preferred endpoint: user identity comes from authentication.
+    // Create order for authenticated customer.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponseDTO createMyOrder(
@@ -36,13 +36,23 @@ public class OrderController {
         );
     }
 
-    // Returns orders belonging to the authenticated user.
+    // Get all orders belonging to authenticated customer.
     @GetMapping
     public List<OrderResponseDTO> getMyOrders() {
+
         return orderService.getMyOrders();
     }
 
-    // Backward-compatible endpoint with server-side ownership checks.
+    // Get one order belonging to authenticated customer.
+    @GetMapping("/{orderId}")
+    public OrderResponseDTO getMyOrder(
+            @PathVariable Long orderId) {
+
+        return orderService.getMyOrderById(orderId);
+    }
+
+    // Backward-compatible endpoint.
+    // Ownership is verified inside OrderService.
     @PostMapping("/{userId}")
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponseDTO createOrder(

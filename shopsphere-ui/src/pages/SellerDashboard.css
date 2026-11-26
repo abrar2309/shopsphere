@@ -1,0 +1,353 @@
+
+.seller-dashboard {
+    min-height: 100vh;
+    background: #f7f7f5;
+    color: #24251f;
+    padding: 0 6%;
+}
+
+.seller-header {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e8e8e2;
+    gap: 20px;
+}
+
+.seller-brand {
+    color: #20211c;
+    font-size: 24px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.seller-brand span {
+    color: #8b704e;
+}
+
+.seller-header nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.seller-header nav a,
+.seller-header nav button {
+    color: #494a43;
+    text-decoration: none;
+    font-size: 14px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.seller-welcome {
+    padding: 65px 0 40px;
+}
+
+.seller-eyebrow {
+    color: #8b704e;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.seller-welcome h1 {
+    margin: 12px 0;
+    font-size: clamp(32px, 5vw, 54px);
+    letter-spacing: -2px;
+}
+
+.seller-welcome p {
+    max-width: 620px;
+    color: #70716a;
+    line-height: 1.7;
+}
+
+.seller-email {
+    display: inline-block;
+    margin-top: 12px;
+    color: #77786f;
+    font-size: 13px;
+}
+
+.seller-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 55px;
+}
+
+.seller-stats article {
+    padding: 23px;
+    background: white;
+    border: 1px solid #eaeae5;
+    border-radius: 13px;
+}
+
+.seller-stats article span {
+    display: block;
+    color: #77786f;
+    font-size: 13px;
+}
+
+.seller-stats article strong {
+    display: block;
+    margin-top: 10px;
+    font-size: 30px;
+}
+
+.seller-form-section,
+.seller-products-section {
+    margin-bottom: 55px;
+}
+
+.seller-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.seller-section-heading h2 {
+    margin: 7px 0 0;
+    font-size: 27px;
+}
+
+.seller-product-form {
+    display: grid;
+    gap: 18px;
+    padding: 27px;
+    background: white;
+    border: 1px solid #eaeae5;
+    border-radius: 14px;
+}
+
+.seller-product-form label {
+    display: grid;
+    gap: 8px;
+    color: #55564e;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.seller-product-form input,
+.seller-product-form textarea {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #deded7;
+    border-radius: 8px;
+    background: white;
+    color: #24251f;
+    font: inherit;
+    font-weight: 400;
+}
+
+.seller-product-form input:focus,
+.seller-product-form textarea:focus {
+    outline: 2px solid #b49a77;
+    border-color: transparent;
+}
+
+.seller-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.seller-primary-button,
+.seller-secondary-button {
+    border-radius: 8px;
+    padding: 12px 18px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.seller-primary-button {
+    justify-self: start;
+    background: #292a23;
+    color: white;
+    border: 1px solid #292a23;
+}
+
+.seller-secondary-button {
+    background: white;
+    color: #383930;
+    border: 1px solid #deded7;
+}
+
+.seller-primary-button:disabled,
+.seller-secondary-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.seller-alert {
+    padding: 14px 17px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.seller-error {
+    background: #fff0ed;
+    color: #a32e20;
+}
+
+.seller-success {
+    background: #edf8ee;
+    color: #276b35;
+}
+
+.seller-product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 22px;
+}
+
+.seller-product-card {
+    overflow: hidden;
+    background: white;
+    border: 1px solid #eaeae5;
+    border-radius: 13px;
+}
+
+.seller-product-image {
+    width: 100%;
+    height: 215px;
+    object-fit: cover;
+    background: #efefea;
+}
+
+.seller-product-content {
+    padding: 18px;
+}
+
+.seller-product-id {
+    color: #8b704e;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.seller-product-content h3 {
+    margin: 9px 0;
+    font-size: 19px;
+}
+
+.seller-product-description {
+    min-height: 42px;
+    color: #77786f;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.seller-product-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 18px 0;
+    gap: 10px;
+}
+
+.seller-product-details strong {
+    font-size: 17px;
+}
+
+.seller-product-details span {
+    color: #77786f;
+    font-size: 13px;
+}
+
+.seller-image-button {
+    display: block;
+    padding: 11px;
+    border: 1px dashed #b7a58e;
+    border-radius: 8px;
+    color: #705b41;
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.seller-image-button input {
+    display: none;
+}
+
+.seller-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 13px;
+}
+
+.seller-card-actions button {
+    flex: 1;
+    padding: 10px;
+    background: #f2f1ed;
+    border: 0;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.seller-card-actions .seller-delete-button {
+    background: #fff0ed;
+    color: #a32e20;
+}
+
+.seller-card-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.seller-empty {
+    padding: 45px 20px;
+    background: white;
+    border: 1px solid #eaeae5;
+    border-radius: 12px;
+    text-align: center;
+    color: #77786f;
+}
+
+.seller-empty h3 {
+    color: #292a23;
+}
+
+.seller-footer {
+    padding: 25px 0;
+    border-top: 1px solid #e8e8e2;
+    color: #888980;
+    text-align: center;
+    font-size: 12px;
+}
+
+@media (max-width: 650px) {
+    .seller-dashboard {
+        padding: 0 5%;
+    }
+
+    .seller-header {
+        align-items: flex-start;
+        padding: 18px 0;
+        flex-direction: column;
+    }
+
+    .seller-header nav {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .seller-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .seller-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .seller-section-heading {
+        align-items: flex-start;
+    }
+}

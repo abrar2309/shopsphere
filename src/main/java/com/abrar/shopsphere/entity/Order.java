@@ -1,3 +1,4 @@
+
 package com.abrar.shopsphere.entity;
 
 import jakarta.persistence.*;
@@ -20,6 +21,30 @@ public class Order {
     private Double totalAmount;
 
     private String status;
+
+    // Immutable snapshot of the delivery address at order creation.
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "label",
+                    column = @Column(name = "delivery_address_label")),
+            @AttributeOverride(name = "recipientName",
+                    column = @Column(name = "delivery_recipient_name")),
+            @AttributeOverride(name = "phoneNumber",
+                    column = @Column(name = "delivery_phone_number")),
+            @AttributeOverride(name = "addressLine1",
+                    column = @Column(name = "delivery_address_line1")),
+            @AttributeOverride(name = "addressLine2",
+                    column = @Column(name = "delivery_address_line2")),
+            @AttributeOverride(name = "city",
+                    column = @Column(name = "delivery_city")),
+            @AttributeOverride(name = "state",
+                    column = @Column(name = "delivery_state")),
+            @AttributeOverride(name = "postalCode",
+                    column = @Column(name = "delivery_postal_code")),
+            @AttributeOverride(name = "country",
+                    column = @Column(name = "delivery_country"))
+    })
+    private OrderAddress deliveryAddress;
 
     @OneToMany(
             mappedBy = "order",
@@ -57,6 +82,14 @@ public class Order {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public OrderAddress getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(OrderAddress deliveryAddress) {
+        this.deliveryAddress = deliveryAddress;
     }
 
     public List<OrderItem> getItems() {

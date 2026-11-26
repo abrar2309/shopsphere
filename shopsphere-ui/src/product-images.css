@@ -1,0 +1,190 @@
+.product-card-image {
+    width: 100%;
+    height: 100%;
+    min-height: 190px;
+    display: block;
+    object-fit: contain;
+    padding: 16px;
+    transition: transform 0.2s ease;
+}
+
+.product-art-clickable:hover .product-card-image {
+    transform: scale(1.05);
+}
+
+.product-detail-image {
+    width: 100%;
+    max-height: 320px;
+    min-height: 180px;
+    display: block;
+    object-fit: contain;
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 16px;
+    background: #f5f4ed;
+}
+
+.product-image-fallback {
+    width: 100%;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #285640;
+}
+
+.product-image-fallback span {
+    font-size: 54px;
+}
+
+.product-image-fallback small {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+/* ---------------------------------------------------------
+   ShopSphere AI Shopping Assistant
+   --------------------------------------------------------- */
+
+.ai-shopping-section {
+    padding: 48px 10%;
+    background: #f3f5ef;
+    border-top: 1px solid #e6e9df;
+    border-bottom: 1px solid #e6e9df;
+}
+
+.ai-shopping-inner {
+    max-width: 1050px;
+    margin: 0 auto;
+}
+
+.ai-shopping-heading {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.ai-shopping-heading h2 {
+    margin: 9px 0;
+    color: #263d2d;
+    font-size: clamp(25px, 3vw, 36px);
+    font-weight: 800;
+}
+
+.ai-shopping-heading p {
+    max-width: 650px;
+    margin: 0 auto;
+    color: #687267;
+    line-height: 1.7;
+}
+
+.ai-shopping-search {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 9px 10px 9px 18px;
+    border: 1px solid #dce3d7;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 12px 35px rgba(30, 55, 35, .07);
+}
+
+.ai-shopping-search > span {
+    color: #52775b;
+    font-size: 24px;
+}
+
+.ai-shopping-search input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 5px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #263d2d;
+    font-size: 15px;
+}
+
+.ai-shopping-search button {
+    padding: 14px 21px;
+    border: 0;
+    border-radius: 8px;
+    background: #294c35;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ai-shopping-search button:hover {
+    background: #1d3927;
+}
+
+.ai-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 18px;
+}
+
+.ai-suggestions > span {
+    color: #6a7468;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ai-suggestions button {
+    padding: 8px 12px;
+    border: 1px solid #dce3d7;
+    border-radius: 30px;
+    background: #fff;
+    color: #38533e;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.ai-suggestions button:hover {
+    border-color: #52775b;
+    background: #e8eee4;
+}
+
+.product-image-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 180px;
+    width: 100%;
+    background: linear-gradient(135deg, #eef1e9, #dfe8dc);
+    color: #38533e;
+}
+
+.product-image-fallback span {
+    font-size: 42px;
+}
+
+.product-image-fallback small {
+    font-size: 12px;
+}
+
+@media (max-width: 650px) {
+    .ai-shopping-section {
+        padding: 35px 5%;
+    }
+
+    .ai-shopping-search {
+        flex-wrap: wrap;
+    }
+
+    .ai-shopping-search input {
+        flex: 1 1 75%;
+    }
+
+    .ai-shopping-search button {
+        width: 100%;
+    }
+}

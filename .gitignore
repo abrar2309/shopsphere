@@ -86,3 +86,46 @@ tools/**/*.class
 
 # Local AWS SSM parameter files
 /ssm-params.json
+
+# AWS credentials and sensitive configuration
+.aws/
+**/*accessKeys*.csv
+**/*credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Database backups and dumps
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.pgdump
+
+# Local AWS diagnostic and parameter files
+**/*ssm-parameters*.json
+**/*ssm-params*.json
+**/*diagnostic*.json
+**/*deploy-check*.json
+
+# Logs and runtime artifacts
+*.log
+*.pid
+*.hprof
+
+# Generated application binaries
+*.jar
+*.war
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+application-secret.properties
+application-local.properties
+
+# Local infrastructure evidence
+ShopSphere-AWS-Evidence-*/
+
+ShopSphere_Month8_Code_Review.txt

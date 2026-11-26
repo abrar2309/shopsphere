@@ -1,0 +1,237 @@
+.seller-operations {
+    display: grid;
+    gap: 22px;
+    margin: 35px 0;
+    color: #292a23;
+}
+
+.operations-heading,
+.operations-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.operations-heading h2 {
+    margin: 7px 0;
+    font-size: clamp(24px, 3vw, 34px);
+}
+
+.operations-heading p,
+.operations-section-heading p,
+.operations-card > p {
+    color: #77786f;
+    margin: 6px 0 15px;
+}
+
+.seller-operations-eyebrow {
+    color: #8b7052;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.seller-operations button {
+    border: 0;
+    border-radius: 8px;
+    background: #292a23;
+    color: white;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.seller-operations button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.operations-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.operations-stats article,
+.operations-card {
+    background: #fff;
+    border: 1px solid #e9e8e1;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.operations-stats article {
+    display: grid;
+    gap: 10px;
+}
+
+.operations-stats article span {
+    color: #77786f;
+    font-size: 13px;
+}
+
+.operations-stats article strong {
+    font-size: 22px;
+    overflow-wrap: anywhere;
+}
+
+.operations-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.operations-card h3 {
+    margin: 0 0 8px;
+}
+
+.operations-card form {
+    display: grid;
+    gap: 13px;
+}
+
+.operations-card label {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.operations-card input,
+.operations-card select,
+.operations-card textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid #dcdcd4;
+    border-radius: 7px;
+    background: #fff;
+    color: #292a23;
+    font: inherit;
+}
+
+.operations-card textarea {
+    min-height: 75px;
+    resize: vertical;
+}
+
+.operations-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.operations-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.operations-table th,
+.operations-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #eeeee9;
+    white-space: nowrap;
+}
+
+.operations-table th {
+    color: #77786f;
+    font-weight: 700;
+}
+
+.operations-status {
+    display: inline-block;
+    padding: 5px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 750;
+}
+
+.operations-status.danger {
+    color: #a32e20;
+    background: #fff0ed;
+}
+
+.operations-status.warning {
+    color: #8b6423;
+    background: #fff5dc;
+}
+
+.operations-empty {
+    color: #77786f;
+    padding: 12px 0;
+}
+
+.operations-error,
+.operations-success {
+    border-radius: 8px;
+    padding: 12px 15px;
+}
+
+.operations-error {
+    background: #fff0ed;
+    color: #a32e20;
+}
+
+.operations-success {
+    background: #edf8ef;
+    color: #27643a;
+}
+
+.sales-chart {
+    display: grid;
+    gap: 12px;
+    margin: 18px 0 25px;
+}
+
+.sales-chart-row {
+    display: grid;
+    grid-template-columns: 110px minmax(80px, 1fr) 120px;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.sales-chart-track {
+    height: 12px;
+    overflow: hidden;
+    background: #f0efe9;
+    border-radius: 20px;
+}
+
+.sales-chart-bar {
+    height: 100%;
+    background: #8caa91;
+    border-radius: 20px;
+}
+
+.sales-chart-row strong {
+    text-align: right;
+}
+
+@media (max-width: 850px) {
+    .operations-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .operations-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .operations-heading,
+    .operations-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .sales-chart-row {
+        grid-template-columns: 85px minmax(50px, 1fr);
+    }
+
+    .sales-chart-row strong {
+        grid-column: 2;
+    }
+}

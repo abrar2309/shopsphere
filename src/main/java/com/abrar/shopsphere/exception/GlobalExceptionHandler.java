@@ -1,16 +1,19 @@
 
-        package com.abrar.shopsphere.exception;
+package com.abrar.shopsphere.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -28,30 +31,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleProductNotFound(
             ProductNotFoundException ex) {
 
-        return buildError(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage()
-        );
+        return buildError(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(CategoryNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleCategoryNotFound(
             CategoryNotFoundException ex) {
 
-        return buildError(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage()
-        );
+        return buildError(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(CartResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleCartResourceNotFound(
             CartResourceNotFoundException ex) {
 
-        return buildError(
-                HttpStatus.NOT_FOUND,
-                ex.getMessage()
-        );
+        return buildError(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
@@ -65,7 +59,8 @@ public class GlobalExceptionHandler {
         body.put("error", "Too Many Requests");
         body.put("message", ex.getMessage());
 
-        HttpHeaders headers = new HttpHeaders();
+        org.springframework.http.HttpHeaders headers =
+                new org.springframework.http.HttpHeaders();
 
         headers.set("X-RateLimit-Limit",
                 String.valueOf(ex.getLimit()));
@@ -107,12 +102,9 @@ public class GlobalExceptionHandler {
         body.put("message", "Request validation failed");
         body.put("validationErrors", validationErrors);
 
-        return ResponseEntity
-                .badRequest()
-                .body(body);
+        return ResponseEntity.badRequest().body(body);
     }
 
-    // Invalid credentials should not be treated as a server failure.
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(
             BadCredentialsException ex) {
@@ -123,11 +115,42 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            AccessDeniedException ex) {
+
+        log.warn("Access denied: {}", ex.getMessage());
+
+        return buildError(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage()
+        );
+    }
+
+    // IMPORTANT: Preserve the HTTP status intentionally thrown by services.
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            ResponseStatusException ex) {
+
+        HttpStatus status = HttpStatus.valueOf(
+                ex.getStatusCode().value()
+        );
+
+        String message = ex.getReason() != null
+                ? ex.getReason()
+                : status.getReasonPhrase();
+
+        return buildError(status, message);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpectedException(
             Exception ex) {
 
-        log.error("Unexpected exception while processing request", ex);
+        log.error(
+                "Unexpected exception while processing request",
+                ex
+        );
 
         return buildError(
                 HttpStatus.INTERNAL_SERVER_ERROR,

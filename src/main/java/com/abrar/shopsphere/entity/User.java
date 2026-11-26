@@ -1,9 +1,13 @@
+
 package com.abrar.shopsphere.entity;
 
 import jakarta.persistence.*;
 
+import org.hibernate.annotations.BatchSize;
+
 @Entity
 @Table(name = "users")
+@BatchSize(size = 20)
 public class User {
 
     @Id
@@ -22,14 +26,12 @@ public class User {
 
     private String role;
 
-
     // ============================================================
     // DEFAULT CONSTRUCTOR
     // ============================================================
 
     public User() {
     }
-
 
     // ============================================================
     // PARAMETERIZED CONSTRUCTOR
@@ -52,7 +54,6 @@ public class User {
         this.password = password;
         this.role = role;
     }
-
 
     // ============================================================
     // GETTERS
@@ -85,7 +86,6 @@ public class User {
     public String getRole() {
         return role;
     }
-
 
     // ============================================================
     // SETTERS

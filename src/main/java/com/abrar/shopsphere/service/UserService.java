@@ -1,11 +1,15 @@
+
 package com.abrar.shopsphere.service;
 
-import com.abrar.shopsphere.dto.UserRequestDTO;
+import com.abrar.shopsphere.dto.UserProfileUpdateDTO;
 import com.abrar.shopsphere.dto.UserResponseDTO;
 import com.abrar.shopsphere.entity.User;
 import com.abrar.shopsphere.exception.UserNotFoundException;
 import com.abrar.shopsphere.repository.UserRepository;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,26 +22,9 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    // Create User
-    public UserResponseDTO addUser(UserRequestDTO dto) {
-
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("Email already exists.");
-        }
-
-        User user = new User();
-
-        user.setFirstName(dto.getFirstName());
-        user.setLastName(dto.getLastName());
-        user.setEmail(dto.getEmail());
-        user.setPhoneNumber(dto.getPhoneNumber());
-
-        User savedUser = userRepository.save(user);
-
-        return mapToResponse(savedUser);
-    }
-
-    // Get All Users
+    // ADMIN ONLY: Retrieve all users
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
     public List<UserResponseDTO> getAllUsers() {
 
         return userRepository.findAll()
@@ -46,27 +33,35 @@ public class UserService {
                 .toList();
     }
 
-    // Get User By Id
+    // ADMIN ONLY: Retrieve any user
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
     public UserResponseDTO getUserById(Long id) {
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException(id));
+        User user = findUser(id);
 
         return mapToResponse(user);
     }
 
-    // Update User
-    public UserResponseDTO updateUser(Long id,
-                                      UserRequestDTO dto) {
+    // CUSTOMER / SELLER / ADMIN: Retrieve own profile
+    @Transactional(readOnly = true)
+    public UserResponseDTO getCurrentUser(String email) {
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException(id));
+        User user = findUserByEmail(email);
+
+        return mapToResponse(user);
+    }
+
+    // CUSTOMER / SELLER / ADMIN: Update own profile
+    @Transactional
+    public UserResponseDTO updateCurrentUser(
+            String email,
+            UserProfileUpdateDTO dto) {
+
+        User user = findUserByEmail(email);
 
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
-        user.setEmail(dto.getEmail());
         user.setPhoneNumber(dto.getPhoneNumber());
 
         User updatedUser = userRepository.save(user);
@@ -74,17 +69,32 @@ public class UserService {
         return mapToResponse(updatedUser);
     }
 
-    // Delete User
+    // ADMIN ONLY: Delete a user
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
     public void deleteUser(Long id) {
 
-        User user = userRepository.findById(id)
-                .orElseThrow(() ->
-                        new UserNotFoundException(id));
+        User user = findUser(id);
 
         userRepository.delete(user);
     }
 
-    // Convert Entity to DTO
+    private User findUser(Long id) {
+
+        return userRepository.findById(id)
+                .orElseThrow(() ->
+                        new UserNotFoundException(id));
+    }
+
+    private User findUserByEmail(String email) {
+
+        return userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated user account not found."
+                        ));
+    }
+
     private UserResponseDTO mapToResponse(User user) {
 
         return new UserResponseDTO(

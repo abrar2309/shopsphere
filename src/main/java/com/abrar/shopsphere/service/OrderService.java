@@ -1,14 +1,17 @@
 
-        package com.abrar.shopsphere.service;
+package com.abrar.shopsphere.service;
 
 import com.abrar.shopsphere.config.RateLimitProperties;
 
+import com.abrar.shopsphere.dto.OrderAddressResponseDTO;
 import com.abrar.shopsphere.dto.OrderItemRequestDTO;
 import com.abrar.shopsphere.dto.OrderItemResponseDTO;
 import com.abrar.shopsphere.dto.OrderRequestDTO;
 import com.abrar.shopsphere.dto.OrderResponseDTO;
 
+import com.abrar.shopsphere.entity.Address;
 import com.abrar.shopsphere.entity.Order;
+import com.abrar.shopsphere.entity.OrderAddress;
 import com.abrar.shopsphere.entity.OrderItem;
 import com.abrar.shopsphere.entity.Product;
 import com.abrar.shopsphere.entity.User;
@@ -18,12 +21,14 @@ import com.abrar.shopsphere.event.OrderItemEvent;
 
 import com.abrar.shopsphere.exception.InsufficientStockException;
 
+import com.abrar.shopsphere.repository.AddressRepository;
 import com.abrar.shopsphere.repository.OrderRepository;
 import com.abrar.shopsphere.repository.ProductRepository;
 import com.abrar.shopsphere.repository.UserRepository;
 
 import org.slf4j.MDC;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +36,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -47,6 +53,7 @@ public class OrderService {
     private final OutboxService outboxService;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final AddressRepository addressRepository;
     private final RateLimitService rateLimitService;
     private final RateLimitProperties rateLimitProperties;
 
@@ -55,6 +62,7 @@ public class OrderService {
             OutboxService outboxService,
             ProductRepository productRepository,
             UserRepository userRepository,
+            AddressRepository addressRepository,
             RateLimitService rateLimitService,
             RateLimitProperties rateLimitProperties) {
 
@@ -62,14 +70,13 @@ public class OrderService {
         this.outboxService = outboxService;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.addressRepository = addressRepository;
         this.rateLimitService = rateLimitService;
         this.rateLimitProperties = rateLimitProperties;
     }
 
     /**
-     * Preferred checkout endpoint service method.
-     * The user ID is obtained from the authenticated JWT principal,
-     * never from the browser request.
+     * Creates an order for the authenticated customer.
      */
     @Transactional
     public OrderResponseDTO createOrderForAuthenticatedUser(
@@ -81,8 +88,7 @@ public class OrderService {
     }
 
     /**
-     * Creates an order for a specific user.
-     * Ownership is verified before any inventory is modified.
+     * Creates an order after verifying customer and address ownership.
      */
     @Transactional
     public OrderResponseDTO createOrder(
@@ -91,13 +97,48 @@ public class OrderService {
 
         User authenticatedUser = getAuthenticatedUser();
 
+        // Verify customer ownership.
         if (!authenticatedUser.getId().equals(userId)) {
             throw new AccessDeniedException(
                     "You are not allowed to create an order for another user."
             );
         }
 
-        // Rate limiting: per authenticated user.
+        // Validate that the request exists.
+        if (requestDTO == null) {
+            throw new IllegalArgumentException(
+                    "Order request is required."
+            );
+        }
+
+        // Verify address ownership BEFORE validating order items.
+        // This ensures unauthorized addresses return HTTP 404.
+        Address address = addressRepository
+                .findByIdAndUserId(
+                        requestDTO.getAddressId(),
+                        authenticatedUser.getId()
+                )
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Delivery address not found."
+                ));
+
+        // Validate order items.
+        if (requestDTO.getItems() == null
+                || requestDTO.getItems().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Order must contain at least one item."
+            );
+        }
+
+        // Create order.
+        Order order = new Order();
+        order.setUser(authenticatedUser);
+        order.setStatus("CREATED");
+        order.setDeliveryAddress(new OrderAddress(address));
+
+        // Rate limiting: per authenticated customer.
         int limit = rateLimitProperties
                 .getOrderCreate()
                 .getLimit();
@@ -115,38 +156,57 @@ public class OrderService {
                 Duration.ofSeconds(windowSeconds)
         );
 
-        // Create the order.
-        Order order = new Order();
-        order.setUser(authenticatedUser);
-        order.setStatus("CREATED");
-
         double totalAmount = 0.0;
 
         List<OrderItemResponseDTO> responseItems =
                 new ArrayList<>();
 
-        // Process each requested product while holding a database row lock.
+        // Lock products while checking and updating inventory.
         for (OrderItemRequestDTO itemDTO : requestDTO.getItems()) {
 
-            Product product = productRepository
-                    .findByIdForUpdate(itemDTO.getProductId())
-                    .orElseThrow(() ->
-                            new RuntimeException("Product not found")
-                    );
-
-            int requestedQuantity = itemDTO.getQuantity();
-
-            if (product.getStock() < requestedQuantity) {
-                throw new InsufficientStockException(
-                        "Insufficient stock for product: "
-                                + product.getName()
+            if (itemDTO == null || itemDTO.getQuantity() == null) {
+                throw new IllegalArgumentException(
+                        "Product quantity is required."
                 );
             }
 
-            // Decrease stock within the current transaction.
-            product.setStock(
-                    product.getStock() - requestedQuantity
-            );
+            int requestedQuantity = itemDTO.getQuantity();
+
+            if (requestedQuantity <= 0) {
+                throw new IllegalArgumentException(
+                        "Product quantity must be greater than zero."
+                );
+            }
+
+            Product product = productRepository
+                    .findByIdForUpdate(itemDTO.getProductId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Product not found: " + itemDTO.getProductId()
+                    ));
+
+            Integer availableStock = product.getStock();
+
+            if (availableStock == null) {
+                throw new IllegalStateException(
+                        "Inventory is not configured for product "
+                                + product.getId()
+                );
+            }
+
+            if (availableStock < requestedQuantity) {
+                throw new InsufficientStockException(
+                        "Insufficient stock for product "
+                                + product.getName()
+                                + ". Available: "
+                                + availableStock
+                                + ", requested: "
+                                + requestedQuantity
+                );
+            }
+
+            // Safe because stock was checked while holding the row lock.
+            product.setStock(availableStock - requestedQuantity);
 
             double itemTotal =
                     product.getPrice() * requestedQuantity;
@@ -172,10 +232,10 @@ public class OrderService {
 
         order.setTotalAmount(totalAmount);
 
-        // Persist the order.
+        // Persist order and order items.
         Order savedOrder = orderRepository.save(order);
 
-        // Build the event items for the transactional outbox.
+        // Prepare order event items.
         List<OrderItemEvent> eventItems = responseItems
                 .stream()
                 .map(item -> new OrderItemEvent(
@@ -185,12 +245,14 @@ public class OrderService {
                 ))
                 .toList();
 
+        // Obtain correlation ID.
         String correlationId = MDC.get("requestId");
 
         if (correlationId == null || correlationId.isBlank()) {
             correlationId = UUID.randomUUID().toString();
         }
 
+        // Build order-created event.
         OrderCreatedEvent orderCreatedEvent =
                 new OrderCreatedEvent(
                         UUID.randomUUID(),
@@ -203,19 +265,23 @@ public class OrderService {
                         eventItems
                 );
 
-        // Preserve the existing outbox integration.
+        // Order and outbox event remain in the same transaction.
         outboxService.saveOrderCreatedEvent(orderCreatedEvent);
 
+        // Return order response.
         return new OrderResponseDTO(
                 savedOrder.getId(),
                 savedOrder.getTotalAmount(),
                 savedOrder.getStatus(),
-                responseItems
+                responseItems,
+                new OrderAddressResponseDTO(
+                        savedOrder.getDeliveryAddress()
+                )
         );
     }
 
     /**
-     * Returns the authenticated user's order history only.
+     * Returns the authenticated customer's order history.
      */
     @Transactional(readOnly = true)
     public List<OrderResponseDTO> getMyOrders() {
@@ -230,7 +296,34 @@ public class OrderService {
     }
 
     /**
-     * Resolves the logged-in user using the email in the security principal.
+     * Returns one order belonging to the authenticated customer.
+     */
+    @Transactional(readOnly = true)
+    public OrderResponseDTO getMyOrderById(Long orderId) {
+
+        if (orderId == null || orderId <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid order ID."
+            );
+        }
+
+        User user = getAuthenticatedUser();
+
+        Order order = orderRepository
+                .findOrderWithItemsByIdAndUserId(
+                        orderId,
+                        user.getId()
+                )
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Order not found."
+                ));
+
+        return toOrderResponse(order);
+    }
+
+    /**
+     * Resolves the authenticated customer.
      */
     private User getAuthenticatedUser() {
 
@@ -273,11 +366,20 @@ public class OrderService {
                         ))
                         .collect(Collectors.toList());
 
+        OrderAddressResponseDTO deliveryAddress = null;
+
+        if (order.getDeliveryAddress() != null) {
+            deliveryAddress = new OrderAddressResponseDTO(
+                    order.getDeliveryAddress()
+            );
+        }
+
         return new OrderResponseDTO(
                 order.getId(),
                 order.getTotalAmount(),
                 order.getStatus(),
-                items
+                items,
+                deliveryAddress
         );
     }
 }

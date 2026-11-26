@@ -1,0 +1,128 @@
+﻿
+.similar-products {
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid #e9e7de;
+}
+
+.similar-products-heading h3 {
+    margin: 7px 0;
+    color: #243b30;
+    font-family: 'Manrope', sans-serif;
+    font-size: 21px;
+    font-weight: 800;
+}
+
+.similar-products-heading p {
+    margin: 5px 0 18px;
+    color: #747a70;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.similar-products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.similar-product-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 15px;
+    border: 1px solid #e9e7de;
+    border-radius: 11px;
+    background: #fffefa;
+}
+
+.similar-product-category {
+    color: #71816e;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.similar-product-card h4 {
+    margin: 9px 0 5px;
+    color: #293e30;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.similar-product-description {
+    display: -webkit-box;
+    min-height: 34px;
+    overflow: hidden;
+    margin: 4px 0 12px;
+    color: #747a70;
+    font-size: 11px;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.similar-product-price {
+    margin-top: auto;
+    color: #285640;
+    font-size: 14px;
+}
+
+.similar-product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 13px;
+}
+
+.similar-product-match {
+    color: #71816e;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.similar-product-footer button {
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: #285640;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.similar-product-footer button:hover {
+    background: #1d3f30;
+}
+
+.similar-products-status {
+    color: #747a70;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+    .similar-products-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Product imagery shared with the storefront and AI recommendation cards. */
+.similar-product-image-wrap {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f4f5f7;
+    margin-bottom: 12px;
+}
+.similar-product-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

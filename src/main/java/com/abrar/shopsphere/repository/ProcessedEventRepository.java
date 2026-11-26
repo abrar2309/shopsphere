@@ -1,3 +1,4 @@
+
 package com.abrar.shopsphere.repository;
 
 import com.abrar.shopsphere.entity.ProcessedEvent;

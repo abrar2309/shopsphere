@@ -1,10 +1,9 @@
+
 package com.abrar.shopsphere.repository;
 
 import com.abrar.shopsphere.entity.OutboxEvent;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -23,15 +22,14 @@ public interface OutboxEventRepository
                     OR claimed_at < :claimExpiry
                   )
             ORDER BY created_at
-            FOR UPDATE SKIP LOCKED
             LIMIT :batchSize
+            FOR UPDATE SKIP LOCKED
             """,
             nativeQuery = true
     )
     List<OutboxEvent> claimableEvents(
             @Param("claimExpiry")
             LocalDateTime claimExpiry,
-
             @Param("batchSize")
             int batchSize
     );

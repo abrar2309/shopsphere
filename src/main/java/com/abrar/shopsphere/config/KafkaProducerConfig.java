@@ -1,3 +1,4 @@
+
 package com.abrar.shopsphere.config;
 
 import com.abrar.shopsphere.event.OrderCreatedEvent;
@@ -17,7 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@ConditionalOnProperty(name = "app.kafka.enabled", havingValue = "true")
+@ConditionalOnProperty(
+        name = "app.kafka.enabled",
+        havingValue = "true"
+)
 public class KafkaProducerConfig {
 
     @Value("${app.kafka.bootstrap-servers:localhost:9092}")
@@ -28,7 +32,11 @@ public class KafkaProducerConfig {
             ObjectMapper objectMapper) {
 
         Map<String, Object> properties = new HashMap<>();
-        properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+
+        properties.put(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                bootstrapServers
+        );
 
         return new DefaultKafkaProducerFactory<>(
                 properties,

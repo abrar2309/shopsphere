@@ -1,3 +1,4 @@
+
 FROM node:22-alpine AS build
 
 WORKDIR /app
@@ -7,7 +8,8 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_API_BASE_URL=
+# Backend API URL used by the browser.
+ARG VITE_API_BASE_URL=http://localhost:8081
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 RUN npm run build

@@ -1,8 +1,11 @@
 package com.abrar.shopsphere.controller;
 
-import com.abrar.shopsphere.dto.ProductRequestDTO;
 import com.abrar.shopsphere.dto.ProductResponseDTO;
+
+import com.abrar.shopsphere.dto.ProductCatalogResponseDTO;
+import com.abrar.shopsphere.dto.ProductRequestDTO;
 import com.abrar.shopsphere.service.ProductService;
+import com.abrar.shopsphere.service.ProductImageService;
 
 import jakarta.validation.Valid;
 
@@ -10,6 +13,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,10 +25,13 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductImageService productImageService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ProductImageService productImageService) {
         this.productService = productService;
+        this.productImageService = productImageService;
     }
+
 
     // ============================================================
     // CREATE PRODUCT
@@ -38,28 +46,69 @@ public class ProductController {
         return productService.addProduct(requestDTO);
     }
 
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ProductResponseDTO uploadProductImage(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file) {
+        return productImageService.upload(id, file);
+    }
+
     // ============================================================
+
+    // ============================================================
+    // SELLER DASHBOARD - GET MY PRODUCTS
+    // ============================================================
+
+    @GetMapping("/mine")
+    public List<ProductResponseDTO> getMyProducts() {
+
+        return productService.getMyProducts();
+    }
     // GET ALL PRODUCTS
     // ============================================================
 
     @GetMapping
     public Page<ProductResponseDTO> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice) {
+
+        return productService.getAllProducts(
+                page, size, sortBy, direction,
+                search, category, minPrice, maxPrice
+        );
+    }
+
+
+    // ============================================================
+    // MONTH 10 - OPTIMIZED PRODUCT CATALOG
+    // ============================================================
+
+    @GetMapping("/catalog")
+    public Page<ProductCatalogResponseDTO> getProductCatalog(
 
             @RequestParam(defaultValue = "0")
             int page,
 
-            @RequestParam(defaultValue = "10")
+            @RequestParam(defaultValue = "20")
             int size,
 
-            @RequestParam(defaultValue = "id")
+            @RequestParam(defaultValue = "price")
             String sortBy) {
 
-        return productService.getAllProducts(
+        return productService.getProductCatalog(
                 page,
                 size,
                 sortBy
         );
     }
+
 
     // ============================================================
     // GET PRODUCT BY ID
@@ -71,6 +120,7 @@ public class ProductController {
 
         return productService.getProductById(id);
     }
+
 
     // ============================================================
     // UPDATE PRODUCT
@@ -90,6 +140,7 @@ public class ProductController {
         );
     }
 
+
     // ============================================================
     // DELETE PRODUCT
     // ============================================================
@@ -102,6 +153,7 @@ public class ProductController {
         productService.deleteProduct(id);
     }
 
+
     // ============================================================
     // SEARCH PRODUCTS
     // ============================================================
@@ -113,6 +165,7 @@ public class ProductController {
 
         return productService.searchProducts(name);
     }
+
 
     // ============================================================
     // FILTER PRODUCTS BY PRICE
@@ -131,6 +184,7 @@ public class ProductController {
         );
     }
 
+
     // ============================================================
     // FILTER PRODUCTS BY CATEGORY
     // ============================================================
@@ -145,3 +199,4 @@ public class ProductController {
         );
     }
 }
+
