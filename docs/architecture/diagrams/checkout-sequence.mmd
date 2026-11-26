@@ -1,0 +1,32 @@
+sequenceDiagram
+  actor Customer
+  participant FE as React
+  participant OC as OrderController
+  participant OS as OrderService
+  participant AR as AddressRepository
+  participant PR as ProductRepository
+  participant OR as OrderRepository
+  participant OUT as OutboxService
+  participant DB as PostgreSQL
+  Customer->>FE: Submit checkout
+  FE->>OC: POST /orders (JWT)
+  OC->>OS: createOrderForAuthenticatedUser
+  OS->>AR: Verify address ownership
+  AR->>DB: Find address by id + user id
+  DB-->>AR: Address
+  OS->>OS: Apply customer order rate limit
+  loop Each order item
+    OS->>PR: findByIdForUpdate
+    PR->>DB: Lock product row
+    DB-->>PR: Product + stock
+    OS->>OS: Validate stock and decrement
+  end
+  OS->>OR: Save order and items
+  OR->>DB: Persist order graph
+  OS->>OUT: saveOrderCreatedEvent
+  OUT->>DB: Insert outbox row
+  Note over DB,OUT: Shared transactional boundary
+  DB-->>OS: Commit
+  OS-->>OC: OrderResponseDTO
+  OC-->>FE: 201 Created
+  FE-->>Customer: Show order
