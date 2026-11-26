@@ -1,0 +1,23 @@
+flowchart TB
+  ORDER["OrderService transaction"]
+  ORDERDB[("orders + order_items")]
+  OUTBOX[("outbox_events")]
+  PUBLISH["OutboxPublisher\nscheduled claim/poll"]
+  TOPIC[("Kafka topic: order-created")]
+  INV["InventoryConsumer\ninventory-group"]
+  PAY["PaymentConsumer\npayment-group"]
+  NOTIFY["NotificationConsumer\nnotification-group"]
+  CLAIM[("event_claims")]
+  PROCESSED[("processed_events")]
+  MAIL["NotificationSender"]
+  DLT["Payment DLT consumer / error handling"]
+  ORDER --> ORDERDB
+  ORDER --> OUTBOX
+  OUTBOX --> PUBLISH --> TOPIC
+  TOPIC --> INV
+  TOPIC --> PAY
+  TOPIC --> NOTIFY
+  PAY --> CLAIM
+  PAY --> PROCESSED
+  NOTIFY --> MAIL
+  PAY -. "retry / terminal failure route" .-> DLT
