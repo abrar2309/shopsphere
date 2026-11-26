@@ -6,25 +6,25 @@ This page records the customer and seller flows shown in the supplied browser ca
 
 ### 1. Home page
 
-![ShopSphere home page](demo-screenshots/01-homepage.webp)
+![ShopSphere home page](demo-screenshots/01-homepage.jpg)
 
 The landing page presents the ShopSphere brand, navigation, bag entry point and a discovery-focused hero section.
 
 ### 2. Discover catalogue
 
-![Discover catalogue](demo-screenshots/02-discover-catalogue.webp)
+![Discover catalogue](demo-screenshots/02-discover-catalogue.jpg)
 
 The Discover page shows the product catalogue with a natural-language prompt, minimum/maximum price filters, sorting and the captured total of 12 products.
 
 ### 3. Product cards and availability
 
-![Product listing cards](demo-screenshots/03-product-cards.webp)
+![Product listing cards](demo-screenshots/03-product-cards.jpg)
 
 The captured cards include Casual Sneakers and Trail Running Shoes with category labels, descriptions, stock state and prices. The captured UI still uses an Image coming soon placeholder for these product cards; this is a known presentation item to improve.
 
 ### 4. Product details
 
-![Product detail modal](demo-screenshots/07-product-detail.webp)
+![Product detail modal](demo-screenshots/07-product-detail.jpg)
 
 The product detail overlay shows the Classic Leather Loafers title, description, price, stock state, image-refresh control, seller/admin image upload entry point, add-to-bag and wishlist actions. The capture also shows the image placeholder rather than a loaded product image.
 
@@ -32,13 +32,13 @@ The product detail overlay shows the Classic Leather Loafers title, description,
 
 ### 5. Checkout with cash on delivery
 
-![Checkout COD](demo-screenshots/04-checkout-cod.webp)
+![Checkout COD](demo-screenshots/04-checkout-cod.jpg)
 
 The checkout panel shows the Cotton T Shirt order summary, subtotal and COD selection before placing the order.
 
 ### 6. Checkout with UPI
 
-![Checkout UPI with sensitive values redacted](demo-screenshots/05-checkout-upi-redacted.webp)
+![Checkout UPI with sensitive values redacted](demo-screenshots/05-checkout-upi-redacted.jpg)
 
 The manual UPI checkout panel displays the ShopSphere payee, amount and transaction-reference input. The supplied capture has been sanitized for repository publication: the UPI identifier and entered transaction reference are redacted. Manual UPI is not a verified payment-gateway transaction; the backend records manual payments as pending until the appropriate verification flow.
 
@@ -46,13 +46,13 @@ The manual UPI checkout panel displays the ShopSphere payee, amount and transact
 
 ### 7. BGE semantic search assistant
 
-![BGE semantic search assistant](demo-screenshots/06-bge-semantic-search.webp)
+![BGE semantic search assistant](demo-screenshots/06-bge-semantic-search.jpg)
 
 The screenshot shows the ShopSphere AI assistant with the query “Running shoes under 2000”. The displayed result count is zero in this capture. This image documents the UI path only; it does not claim that the query returned relevant products. BGE retrieval requires the embedding service to be healthy and product embeddings to have been indexed.
 
 ### 8. Home search entry point
 
-![Home search and recommendations](demo-screenshots/08-homepage-search.webp)
+![Home search and recommendations](demo-screenshots/08-homepage-search.jpg)
 
 The home page also exposes a dedicated search input and AI recommendation area. The screenshot shows a currency-character rendering issue in the search placeholder; this is a UI polish item to check alongside the product-image placeholders.
 
@@ -60,7 +60,7 @@ The home page also exposes a dedicated search input and AI recommendation area. 
 
 ### 9. Seller product variants
 
-![Seller variant management](demo-screenshots/09-seller-variants.webp)
+![Seller variant management](demo-screenshots/09-seller-variants.jpg)
 
 The seller dashboard screenshot shows product cards and variant management controls, including size, colour, variant price, stock and add/edit actions. This demonstrates the seller-side variant-management UI.
 
