@@ -1,0 +1,24 @@
+sequenceDiagram
+  actor Admin
+  participant C as BgeAiProductController
+  participant I as BgeProductEmbeddingService
+  participant P as ProductRepository
+  participant Client as BgeEmbeddingClient
+  participant API as FastAPI
+  participant Model as BAAI/bge-small-en-v1.5
+  participant DB as PostgreSQL
+  Admin->>C: POST /admin/ai/bge/products/index
+  C->>I: indexAllProducts
+  I->>P: findAllWithCategoryAndSeller
+  P-->>I: Product records
+  loop Batches of 32
+    I->>I: Build text + SHA-256 hash
+    I->>DB: Read existing content hash
+    I->>Client: Generate document embeddings for changed items
+    Client->>API: POST /v1/embeddings input_type=document
+    API->>Model: Encode and normalize
+    Model-->>API: 384-dimensional vectors
+    API-->>Client: Vector response
+    Client-->>I: Validated embeddings
+    I->>DB: Upsert product_embeddings_bge
+  end
