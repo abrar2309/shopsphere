@@ -1,0 +1,18 @@
+flowchart LR
+  Customer["Customer"]
+  Seller["Seller"]
+  Admin["Administrator"]
+  Web["React + Vite"]
+  API["Spring Boot REST API"]
+  PostgreSQL[("PostgreSQL")]
+  Redis[("Redis")]
+  Kafka[("Kafka")]
+  BGE["Python FastAPI / BGE"]
+  Customer --> Web
+  Seller --> Web
+  Admin --> Web
+  Web --> API
+  API <--> PostgreSQL
+  API <--> Redis
+  API <--> Kafka
+  API <--> BGE
